@@ -1,0 +1,587 @@
+{
+    "arch": {
+        "desc": null,
+        "value": {
+            "loss": "BCEWithLogitsLoss",
+            "loss_weights": [],
+            "feature_method": "logmel",
+            "global_pool_type": "avg+max",
+            "intermediate_pool_type": "max"
+        }
+    },
+    "debug": {
+        "desc": null,
+        "value": false
+    },
+    "_wandb": {
+        "desc": null,
+        "value": {
+            "t": {
+                "1": [
+                    1,
+                    5,
+                    10,
+                    41,
+                    53,
+                    55
+                ],
+                "2": [
+                    1,
+                    5,
+                    10,
+                    41,
+                    53,
+                    55
+                ],
+                "3": [
+                    1,
+                    2,
+                    3,
+                    13,
+                    14,
+                    16,
+                    23
+                ],
+                "4": "3.10.8",
+                "5": "0.13.7",
+                "8": [
+                    2,
+                    5
+                ]
+            },
+            "framework": "ignite",
+            "start_time": 1691181394.834429,
+            "cli_version": "0.13.7",
+            "is_jupyter_run": false,
+            "python_version": "3.10.8",
+            "is_kaggle_kernel": true
+        }
+    },
+    "device": {
+        "desc": null,
+        "value": "cuda:0"
+    },
+    "epochs": {
+        "desc": null,
+        "value": 500
+    },
+    "run_id": {
+        "desc": null,
+        "value": "31m2plxv"
+    },
+    "exp_dir": {
+        "desc": null,
+        "value": "./augmentV5/"
+    },
+    "channels": {
+        "desc": null,
+        "value": 1
+    },
+    "patience": {
+        "desc": null,
+        "value": -1
+    },
+    "run_name": {
+        "desc": null,
+        "value": "edansa5.4.10"
+    },
+    "batch_size": {
+        "desc": null,
+        "value": 32
+    },
+    "wandb_mode": {
+        "desc": null,
+        "value": "online"
+    },
+    "audio_dtype": {
+        "desc": null,
+        "value": "torch.float32"
+    },
+    "loc_per_set": {
+        "desc": null,
+        "value": {
+            "test": [
+                [
+                    "prudhoe",
+                    "12"
+                ],
+                [
+                    "prudhoe",
+                    "27"
+                ],
+                [
+                    "prudhoe",
+                    "26"
+                ],
+                [
+                    "anwr",
+                    "45"
+                ],
+                [
+                    "anwr",
+                    "50"
+                ],
+                [
+                    "prudhoe",
+                    "18"
+                ],
+                [
+                    "anwr",
+                    "32"
+                ],
+                [
+                    "anwr",
+                    "36"
+                ]
+            ],
+            "train": [
+                [
+                    "anwr",
+                    "35"
+                ],
+                [
+                    "anwr",
+                    "42"
+                ],
+                [
+                    "anwr",
+                    "43"
+                ],
+                [
+                    "dalton",
+                    "01"
+                ],
+                [
+                    "dalton",
+                    "02"
+                ],
+                [
+                    "dalton",
+                    "03"
+                ],
+                [
+                    "dalton",
+                    "04"
+                ],
+                [
+                    "dalton",
+                    "05"
+                ],
+                [
+                    "dalton",
+                    "06"
+                ],
+                [
+                    "dalton",
+                    "07"
+                ],
+                [
+                    "dalton",
+                    "08"
+                ],
+                [
+                    "dalton",
+                    "09"
+                ],
+                [
+                    "dalton",
+                    "10"
+                ],
+                [
+                    "dempster",
+                    "11"
+                ],
+                [
+                    "dempster",
+                    "12"
+                ],
+                [
+                    "dempster",
+                    "13"
+                ],
+                [
+                    "dempster",
+                    "14"
+                ],
+                [
+                    "dempster",
+                    "15"
+                ],
+                [
+                    "dempster",
+                    "16"
+                ],
+                [
+                    "dempster",
+                    "17"
+                ],
+                [
+                    "dempster",
+                    "19"
+                ],
+                [
+                    "dempster",
+                    "20"
+                ],
+                [
+                    "dempster",
+                    "21"
+                ],
+                [
+                    "dempster",
+                    "22"
+                ],
+                [
+                    "dempster",
+                    "23"
+                ],
+                [
+                    "dempster",
+                    "24"
+                ],
+                [
+                    "dempster",
+                    "25"
+                ],
+                [
+                    "ivvavik",
+                    "ar01"
+                ],
+                [
+                    "ivvavik",
+                    "ar02"
+                ],
+                [
+                    "ivvavik",
+                    "ar03"
+                ],
+                [
+                    "ivvavik",
+                    "ar04"
+                ],
+                [
+                    "ivvavik",
+                    "ar05"
+                ],
+                [
+                    "ivvavik",
+                    "ar06"
+                ],
+                [
+                    "ivvavik",
+                    "ar07"
+                ],
+                [
+                    "ivvavik",
+                    "ar08"
+                ],
+                [
+                    "ivvavik",
+                    "ar09"
+                ],
+                [
+                    "ivvavik",
+                    "ar10"
+                ],
+                [
+                    "ivvavik",
+                    "sinp01"
+                ],
+                [
+                    "ivvavik",
+                    "sinp02"
+                ],
+                [
+                    "ivvavik",
+                    "sinp03"
+                ],
+                [
+                    "ivvavik",
+                    "sinp04"
+                ],
+                [
+                    "ivvavik",
+                    "sinp05"
+                ],
+                [
+                    "ivvavik",
+                    "sinp06"
+                ],
+                [
+                    "ivvavik",
+                    "sinp07"
+                ],
+                [
+                    "ivvavik",
+                    "sinp08"
+                ],
+                [
+                    "ivvavik",
+                    "sinp09"
+                ],
+                [
+                    "ivvavik",
+                    "sinp10"
+                ],
+                [
+                    "prudhoe",
+                    "23"
+                ],
+                [
+                    "prudhoe",
+                    "28"
+                ],
+                [
+                    "anwr",
+                    "41"
+                ],
+                [
+                    "prudhoe",
+                    "21"
+                ],
+                [
+                    "anwr",
+                    "49"
+                ],
+                [
+                    "anwr",
+                    "48"
+                ],
+                [
+                    "prudhoe",
+                    "19"
+                ],
+                [
+                    "prudhoe",
+                    "16"
+                ],
+                [
+                    "anwr",
+                    "39"
+                ],
+                [
+                    "prudhoe",
+                    "30"
+                ],
+                [
+                    "anwr",
+                    "38"
+                ],
+                [
+                    "prudhoe",
+                    "22"
+                ],
+                [
+                    "prudhoe",
+                    "11"
+                ],
+                [
+                    "anwr",
+                    "37"
+                ],
+                [
+                    "anwr",
+                    "44"
+                ],
+                [
+                    "anwr",
+                    "33"
+                ],
+                [
+                    "prudhoe",
+                    "29"
+                ],
+                [
+                    "anwr",
+                    "46"
+                ],
+                [
+                    "prudhoe",
+                    "25"
+                ],
+                [
+                    "prudhoe",
+                    "13"
+                ],
+                [
+                    "prudhoe",
+                    "24"
+                ],
+                [
+                    "prudhoe",
+                    "17"
+                ],
+                [
+                    "anwr",
+                    "40"
+                ],
+                [
+                    "prudhoe",
+                    "14"
+                ]
+            ],
+            "valid": [
+                [
+                    "prudhoe",
+                    "15"
+                ],
+                [
+                    "prudhoe",
+                    "20"
+                ],
+                [
+                    "anwr",
+                    "31"
+                ],
+                [
+                    "anwr",
+                    "47"
+                ],
+                [
+                    "anwr",
+                    "34"
+                ]
+            ]
+        }
+    },
+    "max_mel_len": {
+        "desc": null,
+        "value": 938
+    },
+    "target_taxo": {
+        "desc": null,
+        "value": [
+            "1.0.0",
+            "1.1.0",
+            "1.1.10",
+            "1.1.7",
+            "0.0.0",
+            "1.3.0",
+            "1.1.8",
+            "0.2.0",
+            "3.0.0"
+        ]
+    },
+    "ignore_files": {
+        "desc": null,
+        "value": []
+    },
+    "project_name": {
+        "desc": null,
+        "value": "edansa"
+    },
+    "weight_decay": {
+        "desc": null,
+        "value": 0.01
+    },
+    "augmentations": {
+        "desc": null,
+        "value": {
+            "mix_channels": false,
+            "random_mergev2": true,
+            "spec_augmenter": true,
+            "AddGaussianNoise": true,
+            "random_merge_fair": false,
+            "mix_channels_coeff": 0.3,
+            "gauss_max_amplitude": 0.015
+        }
+    },
+    "learning_rate": {
+        "desc": null,
+        "value": 0.001
+    },
+    "load_clipping": {
+        "desc": null,
+        "value": true
+    },
+    "sampling_rate": {
+        "desc": null,
+        "value": 48000
+    },
+    "category_count": {
+        "desc": null,
+        "value": 9
+    },
+    "dataset_folder": {
+        "desc": null,
+        "value": null
+    },
+    "dataset_name_v": {
+        "desc": null,
+        "value": "datasetV5.4.10"
+    },
+    "excerpt_length": {
+        "desc": null,
+        "value": 10
+    },
+    "run_id_2resume": {
+        "desc": null,
+        "value": ""
+    },
+    "dataset_csv_path": {
+        "desc": null,
+        "value": "../../datasetV5.4.10.csv"
+    },
+    "checkpoint_metric": {
+        "desc": null,
+        "value": "val_f1_min"
+    },
+    "code2excell_names": {
+        "desc": null,
+        "value": {
+            "0.0.0": "Anth",
+            "0.2.0": "Airc",
+            "1.0.0": "Bio",
+            "1.1.0": "Bird",
+            "1.1.7": "DGS",
+            "1.1.8": "Grous",
+            "1.3.0": "Bug",
+            "2.0.0": "Geo",
+            "3.0.0": "Sil",
+            "1.1.10": "SongB"
+        }
+    },
+    "dataset_in_memory": {
+        "desc": null,
+        "value": true
+    },
+    "excell_names2code": {
+        "desc": null,
+        "value": {
+            "Bio": "1.0.0",
+            "Bug": "1.3.0",
+            "DGS": "1.1.7",
+            "Geo": "2.0.0",
+            "Sil": "3.0.0",
+            "Airc": "0.2.0",
+            "Anth": "0.0.0",
+            "Bird": "1.1.0",
+            "Grous": "1.1.8",
+            "SongB": "1.1.10"
+        }
+    },
+    "taxonomy_file_path": {
+        "desc": null,
+        "value": "../../taxonomy/taxonomy_V2.yaml"
+    },
+    "sample_length_limit": {
+        "desc": null,
+        "value": 2
+    },
+    "dataset_cache_folder": {
+        "desc": null,
+        "value": "./datasetV5_cache"
+    },
+    "audio_data_cache_path": {
+        "desc": null,
+        "value": ""
+    },
+    "checkpointfile_2resume": {
+        "desc": null,
+        "value": ""
+    },
+    "checkpoint_every_Nth_epoch": {
+        "desc": null,
+        "value": 100
+    }
+}
