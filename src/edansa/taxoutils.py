@@ -86,15 +86,41 @@ def row2yaml_codev2(row, excell_names2code):
         
     
     '''
+    # we are hard coding this because this function for a specific template
+    #
     yaml_codes = []
+    # excell_class_names = {
+    #     'whim', 'amgp', 'shorebird', 'spsa', 'paja', 'hola', 'sngo', 'lalo',
+    #     'savs', 'wipt', 'nora', 'atsp', 'wisn', 'wfgo', 'sesa', 'glgu', 'bird',
+    #     'mam', 'loon', 'helo', 'auto', 'jet', 'corv', 'dgs', 'flare', 'bio',
+    #     'bear', 'crane', 'fly', 'airc', 'hum', 'truck', 'rain', 'bug', 'mosq',
+    #     'geo', 'mach', 'woof', 'deer', 'water', 'anth', 'songb', 'woop', 'car',
+    #     'rapt', 'sil', 'seab', 'wind', 'owl', 'meow', 'mous', 'prop', 'grous',
+    #     'weas', 'hare', 'shrew'
+    # }
+
+    # make keys case insensitive
+    row_lower = {}
+    for k, v in row.items():
+        k_lower = k.lower()
+        row_lower[k_lower] = v
+        if k_lower not in excell_names2code and k_lower not in INFO_COLUMNS:
+            print(f'excell_names2code missing categories: {k_lower}')
+
     for excell_class_name in excell_names2code:
-        # value is 1 or 0
-        class_exists_or_not = row.get(excell_class_name, None)
-        # print(class_exists_or_not)
-        class_exists_or_not = str(class_exists_or_not)
-        if class_exists_or_not == '1':
+        class_exists_or_not = row_lower.get(excell_class_name, None)
+        if class_exists_or_not == 'N/A' or class_exists_or_not == '':
+            continue
+        if class_exists_or_not is None:
+            continue
+        if float(class_exists_or_not) == 1.0:
             yaml_code = excell_names2code[excell_class_name]
             yaml_codes.append(yaml_code)
+        elif float(class_exists_or_not) == 0.0:
+            pass
+        else:
+            raise ValueError(  # pragma: no cover
+                f'row has wrong info about categories not 1 or 0: {row}')
 
     if len(yaml_codes) != len(set(yaml_codes)):
         print(row)
@@ -107,7 +133,7 @@ def row2yaml_codev2(row, excell_names2code):
 
 
 def megan_excell_row2yaml_code(row: Dict,
-                               excell_names2code: Dict = None,
+                               excell_names2code: Union[Dict, None] = None,
                                version='V2'):
     '''Megan style labels to nna yaml topology V1.
 
@@ -125,67 +151,7 @@ def megan_excell_row2yaml_code(row: Dict,
 
     '''
     if excell_names2code is None:
-        excell_names2code = {
-            'SNGO': '4.1.10.0',
-            'LALO': '4.1.10.1',
-            'SAVS': '4.1.10.2',
-            'WIPT': '4.1.10.3',
-            'NORA': '4.1.10.4',
-            'ATSP': '4.1.10.5',
-            'WISN': '4.1.10.6',
-            'WFGO': '4.1.10.7',
-            'SESA': '4.1.10.8',
-            'GLGU': '4.1.10.9',
-            'anth': '0.0.0',
-            'auto': '0.1.0',
-            'car': '0.1.2',
-            'truck': '0.1.1',
-            'prop': '0.2.1',
-            'helo': '0.2.2',
-            'jet': '0.2.3',
-            'mach': '0.3.0',
-            'bio': '1.0.0',
-            'bird': '1.1.0',
-            'crane': '1.1.11',
-            'corv': '1.1.12',
-            'hum': '1.1.1',
-            'shorb': '1.1.2',
-            'rapt': '1.1.4',
-            'owl': '1.1.6',
-            'woop': '1.1.9',
-            'bug': '1.3.0',
-            'dgs': '1.1.7',
-            'flare': '0.4.0',
-            'fox': '1.2.4',
-            'geo': '2.0.0',
-            'grouse': '1.1.8',
-            'grous': '1.1.8',
-            'loon': '1.1.3',
-            'mam': '1.2.0',
-            'bear': '1.2.2',
-            'plane': '0.2.0',
-            'ptarm': '1.1.8',
-            'rain': '2.1.0',
-            'seab': '1.1.5',
-            'mous': '1.2.1',
-            'deer': '1.2.3',
-            'woof': '1.2.4',
-            'weas': '1.2.5',
-            'meow': '1.2.6',
-            'hare': '1.2.7',
-            'shrew': '1.2.8',
-            'fly': '1.3.2',
-            'silence': '3.0.0',
-            'sil': '3.0.0',
-            'songbird': '1.1.10',
-            'songb': '1.1.10',
-            'unknown': 'X.X.X',
-            'water': '2.2.0',
-            'x': 'X.X.X',
-            'airc': '0.2.0',
-            'mosq': '1.3.1',
-            'wind': '2.3.0',
-        }
+        excell_names2code = EXCELL_NAMES2TAXO_CODE
 
     if version == 'V1':
         yaml_code = row2yaml_codev1(row, excell_names2code)
@@ -299,33 +265,51 @@ class Taxonomy(MutableMapping):
         return d
 
 
-excell_all_headers = [
+INFO_COLUMNS = [
+    'clip_path',
     'data_version',
-    'Annotator',
+    'annotator',
     'region',
-    'Site ID',
-    'Comments',
-    'File Name',
-    'Date',
-    'Start Time',
-    'End Time',
-    'Length',
-    'WHIM',
-    'AMGP',
-    'SHOREBIRD',
-    'SPSA',
-    'PAJA',
-    'HOLA',
-    'SNGO',
-    'LALO',
-    'SAVS',
-    'WIPT',
-    'NORA',
-    'ATSP',
-    'WISN',
-    'WFGO',
-    'SESA',
-    'GLGU',  # new from John's labels
+    'location',
+    'comments',
+    'file_name',
+    'date',
+    'duration_sec',
+    'reviewed',
+    'extra_tags',
+    'start_date_time',
+    'end_date_time',
+    'prev_clip_path',
+]
+excell_all_headers = [
+    'clip_path',
+    'data_version',
+    'annotator',
+    'region',
+    'location',
+    'comments',
+    'file_name',
+    'start_date_time',
+    'duration_sec',
+    'end_date_time',
+    'reviewed',
+    'extra_tags',
+    # 'WHIM',
+    # 'AMGP',
+    # 'SHOREBIRD',
+    # 'SPSA',
+    # 'PAJA',
+    # 'HOLA',
+    # 'SNGO',
+    # 'LALO',
+    # 'SAVS',
+    # 'WIPT',
+    # 'NORA',
+    # 'ATSP',
+    # 'WISN',
+    # 'WFGO',
+    # 'SESA',
+    # 'GLGU',  # new from John's labels
     'Anth',
     'Bio',
     'Geo',
@@ -367,27 +351,24 @@ excell_all_headers = [
     'Shrew',
     'Mosq',
     'Fly',
-    'Clip Path',
-    'Reviewed',
-    'extra_tags'
 ]
 excell_label_headers = [
-    'WHIM',
-    'AMGP',
-    'SHOREBIRD',
-    'SPSA',
-    'PAJA',
-    'HOLA',
-    'SNGO',
-    'LALO',
-    'SAVS',
-    'WIPT',
-    'NORA',
-    'ATSP',
-    'WISN',
-    'WFGO',
-    'SESA',
-    'GLGU',  # new from John's labels
+    # 'WHIM',
+    # 'AMGP',
+    # 'SHOREBIRD',
+    # 'SPSA',
+    # 'PAJA',
+    # 'HOLA',
+    # 'SNGO',
+    # 'LALO',
+    # 'SAVS',
+    # 'WIPT',
+    # 'NORA',
+    # 'ATSP',
+    # 'WISN',
+    # 'WFGO',
+    # 'SESA',
+    # 'GLGU',  # new from John's labels
     'Anth',
     'Bio',
     'Geo',
@@ -430,17 +411,14 @@ excell_label_headers = [
     'Mosq',
     'Fly'
 ]
+label_headers_noaffect_on_silence = [
+    'Geo',
+    'Wind',
+    'Rain',
+    'Water',
+]
 
-excell_names2code = {
-    'Anth': '0.0.0',
-    'Bio': '1.0.0',
-    'Geo': '2.0.0',
-    'Sil': '3.0.0',
-    'Auto': '0.1.0',
-    'Airc': '0.2.0',
-    'Mach': '0.3.0',
-    'Flare': '0.4.0',
-    'Bird': '1.1.0',
+EXCELL_NAMES2TAXO_CODE = {
     'sngo': '4.1.10.0',
     'lalo': '4.1.10.1',
     'savs': '4.1.10.2',
@@ -453,58 +431,40 @@ excell_names2code = {
     'glgu': '4.1.10.9',
     'whim': '4.1.10.10',
     'amgp': '4.1.10.11',
-    'shorebird': '4.1.10.12',
-    'spsa': '4.1.10.13',
-    'paja': '4.1.10.14',
-    'hola': '4.1.10.15',
-    'LALO': '4.1.10.1',
-    'SAVS': '4.1.10.2',
-    'WIPT': '4.1.10.3',
-    'NORA': '4.1.10.4',
-    'SNGO': '4.1.10.0',
-    'ATSP': '4.1.10.5',
-    'WISN': '4.1.10.6',
-    'WFGO': '4.1.10.7',
-    'SESA': '4.1.10.8',
-    'GLGU': '4.1.10.9',
-    'WHIM': '4.1.10.10',
-    'AMGP': '4.1.10.11',
-    'SHOREBIRD': '4.1.10.12',
-    'SPSA': '4.1.10.13',
-    'PAJA': '4.1.10.14',
-    'HOLA': '4.1.10.15',
-    'Mam': '1.2.0',
-    'Bug': '1.3.0',
-    'Wind': '2.3.0',
-    'Rain': '2.1.0',
-    'Water': '2.2.0',
-    'Truck': '0.1.1',
-    'Car': '0.1.2',
-    'Prop': '0.2.1',
-    'Helo': '0.2.2',
-    'Jet': '0.2.3',
-    'Corv': '1.1.12',
-    'SongB': '1.1.10',
-    'DGS': '1.1.7',
-    'Grous': '1.1.8',
-    'Crane': '1.1.11',
-    'Loon': '1.1.3',
-    'SeaB': '1.1.5',
-    'Owl': '1.1.6',
-    'Hum': '1.1.1',
-    'Rapt': '1.1.4',
-    'Woop': '1.1.9',
-    'ShorB': '1.1.2',
-    'Woof': '1.2.4',
-    'Bear': '1.2.2',
-    'Mous': '1.2.1',
-    'Deer': '1.2.3',
-    'Weas': '1.2.5',
-    'Meow': '1.2.6',
-    'Hare': '1.2.7',
-    'Shrew': '1.2.8',
-    'Mosq': '1.3.1',
-    'Fly': '1.3.2',
+    'ampi': '4.1.10.12',
+    'amro': '4.1.10.13',
+    'blue': '4.1.10.14',
+    'cang': '4.1.10.15',
+    'cora': '4.1.10.16',
+    'core': '4.1.10.17',
+    'eywa': '4.1.10.18',
+    'fosp': '4.1.10.19',
+    'gcsp': '4.1.10.20',
+    'caja': '4.1.10.21',
+    'gcth': '4.1.10.22',
+    'gcrf': '4.1.10.23',
+    'gwfg': '4.1.10.24',
+    'hore': '4.1.10.25',
+    'hola': '4.1.10.26',
+    'leye': '4.1.10.27',
+    'lbdo': '4.1.10.28',
+    'nowh': '4.1.10.29',
+    'pesa': '4.1.10.30',
+    'ropt': '4.1.10.31',
+    'sacr': '4.1.10.32',
+    'sepl': '4.1.10.33',
+    'smlo': '4.1.10.34',
+    'snbu': '4.1.10.35',
+    'wata': '4.1.10.36',
+    'wesa': '4.1.10.37',
+    'wcsp': '4.1.10.38',
+    'wiwa': '4.1.10.39',
+    'yewa': '4.1.10.40',
+    'duck': '4.1.10.41',
+    'goose': '4.1.10.42',
+    'jaeger': '4.1.10.43',
+    'ocwa': '4.1.10.44',
+    'deju': '4.1.10.45',
     'anth': '0.0.0',
     'auto': '0.1.0',
     'car': '0.1.2',
@@ -523,8 +483,6 @@ excell_names2code = {
     'owl': '1.1.6',
     'woop': '1.1.9',
     'bug': '1.3.0',
-    'bugs': '1.3.0',
-    'insect': '1.3.0',
     'dgs': '1.1.7',
     'flare': '0.4.0',
     'fox': '1.2.4',
@@ -532,14 +490,12 @@ excell_names2code = {
     'grouse': '1.1.8',
     'grous': '1.1.8',
     'loon': '1.1.3',
-    'loons': '1.1.3',
     'mam': '1.2.0',
     'bear': '1.2.2',
     'plane': '0.2.0',
     'ptarm': '1.1.8',
     'rain': '2.1.0',
     'seab': '1.1.5',
-    'seabirds': '1.1.5',
     'mous': '1.2.1',
     'deer': '1.2.3',
     'woof': '1.2.4',
@@ -552,67 +508,37 @@ excell_names2code = {
     'sil': '3.0.0',
     'songbird': '1.1.10',
     'songb': '1.1.10',
-    'birdsong': '1.1.10',
     'unknown': 'X.X.X',
     'water': '2.2.0',
     'x': 'X.X.X',
     'airc': '0.2.0',
-    'aircraft': '0.2.0',
     'mosq': '1.3.1',
     'wind': '2.3.0',
-    'windy': '2.3.0',
 }
 
-taxo_code2excell_names = {
-    '4.1.10.0': 'SNGO',
-    '4.1.10.1': 'LALO',
-    '4.1.10.2': 'SAVS',
-    '4.1.10.3': 'WIPT',
-    '4.1.10.4': 'NORA',
-    '4.1.10.5': 'ATSP',
-    '4.1.10.6': 'WISN',
-    '4.1.10.7': 'WFGO',
-    '4.1.10.8': 'SESA',
-    '4.1.10.9': 'GLGU',
-    '0.0.0': 'Anth',
-    '1.0.0': 'Bio',
-    '2.0.0': 'Geo',
-    '3.0.0': 'Sil',
-    '0.1.0': 'Auto',
-    '0.1.2': 'Car',
-    '0.2.0': 'Airc',
-    '0.3.0': 'Mach',
-    '0.4.0': 'Flare',
-    '1.1.0': 'Bird',
-    '1.2.0': 'Mam',
-    '1.3.0': 'Bug',
-    '2.3.0': 'Wind',
-    '2.1.0': 'Rain',
-    '2.2.0': 'Water',
-    '0.1.1': 'Truck',
-    '0.2.1': 'Prop',
-    '0.2.2': 'Helo',
-    '0.2.3': 'Jet',
-    '1.1.12': 'Corv',
-    '1.1.10': 'SongB',
-    '1.1.7': 'DGS',
-    '1.1.8': 'Grous',
-    '1.1.11': 'Crane',
-    '1.1.3': 'Loon',
-    '1.1.5': 'SeaB',
-    '1.1.6': 'Owl',
-    '1.1.1': 'Hum',
-    '1.1.4': 'Rapt',
-    '1.1.9': 'Woop',
-    '1.1.2': 'ShorB',
-    '1.2.4': 'Woof',
-    '1.2.2': 'Bear',
-    '1.2.1': 'Mous',
-    '1.2.3': 'Deer',
-    '1.2.5': 'Weas',
-    '1.2.6': 'Meow',
-    '1.2.7': 'Hare',
-    '1.2.8': 'Shrew',
-    '1.3.1': 'Mosq',
-    '1.3.2': 'Fly'
+# EXCELL_NAMES2CODE
+TAXO_CODE2EXCELL_NAMES = {
+    code: name for name, code in EXCELL_NAMES2TAXO_CODE.items()
 }
+
+if not len(EXCELL_NAMES2TAXO_CODE) == len(TAXO_CODE2EXCELL_NAMES):
+    # print missing taxonomies, keys and values are swapped
+    # print repeating values from EXCELL_NAMES2TAXO_CODE
+
+    error_flag = False
+    value_counts = Counter(EXCELL_NAMES2TAXO_CODE.values())
+    for k, v in value_counts.items():
+        if v == 2:
+            if k in ['X.X.X', '1.2.4', '0.2.0', '3.0.0', '1.1.10']:
+                continue
+        if v == 3:
+            # grous, grouse, ptarm
+            if k in ['1.1.8']:
+                continue
+        if v == 1:
+            continue
+        print(k, v)  # Added print for v == 2 cases that are not excluded
+        error_flag = True
+
+    if error_flag:
+        raise ValueError('There are repeating values in EXCELL_NAMES2TAXO_CODE')

@@ -1,40 +1,339 @@
 '''Utitilieifor running this experiment
 '''
 
-import random
+import os
 from pathlib import Path
+import random
 
 import numpy as np
+import pandas as pd
 
 from ignite.contrib.handlers import wandb_logger
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
-from ignite.handlers import ModelCheckpoint, EarlyStopping, global_step_from_engine
-from ignite.handlers import Checkpoint, DiskSaver
+
+# from ignite.metrics import Accuracy, Loss
+# from ignite.contrib.metrics import ROC_AUC
+from ignite.handlers import (ModelCheckpoint, EarlyStopping,
+                             global_step_from_engine, Checkpoint, DiskSaver,
+                             EpochOutputStore)
 
 from ignite.utils import setup_logger
 
 import torch
-from torch.utils.data import Dataset
-
-from audiomentations import Compose, AddGaussianNoise
-
-
-def vectorized_y_true(humanresults, tag_set):
-    y_true = {tag: np.zeros(len(humanresults)) for tag in tag_set}
-    for i, tags in enumerate(humanresults.values()):
-        # we  only look for tags in tag_set
-        for tag in tag_set:
-            if tag in tags:
-                y_true[tag][i] = 1
-            else:
-                y_true[tag][i] = 0
-    return y_true
+import wandb
 
 
 def activated_output_transform(output):
     y_pred, y = output
     y_pred = torch.exp(y_pred)
     return y_pred, y
+
+
+def create_evaluators(model,
+                      metrics,
+                      device,
+                      eval_names=('train', 'val', 'test')):
+    evaluators = {}
+    for eval_name in eval_names:
+        evaluator = create_supervised_evaluator(model,
+                                                metrics=metrics,
+                                                device=device)
+        eos = EpochOutputStore()
+        eos.attach(evaluator, 'output')
+        evaluator.logger = setup_logger(f'{eval_name} Evaluator')
+        evaluators[eval_name] = evaluator
+    return evaluators
+
+
+def get_metric_stats(evaluators, metric_name):
+    metric_stats = {}
+    for eval_name, evaluator in evaluators.items():
+        metric_stats[eval_name] = {}
+        metric_val = evaluator.state.metrics[metric_name]
+        metric_val = np.asarray(metric_val)
+        if np.ndim(metric_val) == 0:  # If metric_val is a scalar
+            metric_val = np.array([metric_val])  # Convert it to a 1D array
+        metric_stats[eval_name]['raw_data'] = metric_val
+        metric_stats[eval_name]['mean'] = np.mean(metric_val).item()
+        metric_stats[eval_name]['min'] = np.min(metric_val).item()
+        metric_stats[eval_name]['max'] = np.max(metric_val).item()
+    return metric_stats
+
+
+def print_metrics(evaluators):
+    for eval_name, evaluator in evaluators.items():
+        for metric_name, metric in evaluator.state.metrics.items():
+            print(f'{eval_name} - {metric_name}: {metric}')
+
+
+def log_metric_stats(evaluators, wandb_logger_ins, taxo_names, step,
+                     current_epoch, best_values, metric_name):
+    metric_stats = get_metric_stats(evaluators, metric_name)
+    best_val_metric = best_values['val'][metric_name]
+    # Update the best metric value and the corresponding epoch if the current metric value is better
+    for metric_aggreate in ['mean', 'min']:
+        if metric_stats['val'][metric_aggreate] > best_val_metric[
+                metric_aggreate]['value']:
+            best_val_metric[metric_aggreate]['value'] = metric_stats['val'][
+                metric_aggreate]
+            best_val_metric[metric_aggreate]['epoch'] = current_epoch
+            wandb_logger_ins.log(
+                {
+                    f'best_{metric_aggreate}_{metric_name}':
+                        best_val_metric[metric_aggreate]['value'],
+                    f'best_{metric_aggreate}_Epoch':
+                        best_val_metric[metric_aggreate]['epoch']
+                },
+                step=step)
+
+    # Log the metric value for training and validation sets
+    for metric_aggreate in ['mean']:  # ['mean', 'min', 'max']
+        for eval_name in ['val', 'train']:
+            if eval_name in metric_stats:
+                wandb_logger_ins.log(
+                    {
+                        f'{eval_name}_{metric_aggreate}_{metric_name}':
+                            metric_stats[eval_name][metric_aggreate]
+                    },
+                    step=step)
+
+    # Log the metric value for each class in the taxonomy
+    if taxo_names is None:
+        taxo_names = [f'class_{k}' for k in range(len(metric_stats['val']))]
+    for i, taxo_name in enumerate(taxo_names):  # type: ignore
+        for eval_name in ['val', 'test']:
+            if eval_name in metric_stats:
+                try:
+                    raw_metric_val = metric_stats[eval_name]['raw_data'][i]
+                except IndexError:
+                    raw_metric_val = 0
+                wandb_logger_ins.log(
+                    {
+                        f'{eval_name}_{metric_name.lower()}_{taxo_name}':
+                            raw_metric_val
+                    },
+                    step=step)
+
+
+def score_function_mean_AUC(engine):
+    return np.mean(engine.state.metrics['ROC_AUC']).item()
+
+
+def score_function_loss(engine):
+    print('loss', engine.state.metrics['loss'])
+    return engine.state.metrics['loss']
+
+
+def reverse_loss_function(engine):
+    return -1 * engine.state.metrics['loss']
+
+
+def score_function_min_AUC(engine):
+    return np.min(engine.state.metrics['ROC_AUC']).item()
+
+
+def score_function_mean_F1(engine):
+    return np.mean(engine.state.metrics['f1']).item()
+
+
+def score_function_min_F1(engine):
+    return np.min(engine.state.metrics['f1']).item()
+
+
+def get_checkpoint_dir(checkpoints_dir, run_dir, wandb_run_id):
+    if checkpoints_dir is None:
+        checkpoint_dir_inrun = (Path(run_dir) / 'checkpoints')
+        checkpoint_dir_inrun.mkdir(exist_ok=True)
+        checkpoint_dir = checkpoint_dir_inrun
+    else:
+        # Check if wandb_run_id is same as the in the folder name
+        wandb_logger_ins_run_dir = Path(run_dir)
+        #run-20210429_035224-12tsplqm/files
+        run_info_from_dirname = wandb_logger_ins_run_dir.parent.stem.split('-')
+        run_timestamp = run_info_from_dirname[1]
+        folder_run_id = run_info_from_dirname[-1]
+
+        if str(wandb_run_id) != folder_run_id:
+            raise Exception(
+                f' ID from wandb_logger_ins.run.dir is not as same as id from API'
+                + f'{wandb_run_id},{folder_run_id}, {run_dir}')
+        # Create checkpoint dir
+        checkpoint_dir = checkpoints_dir / '-'.join(
+            (('run', run_timestamp, wandb_run_id)))
+
+    return checkpoint_dir
+
+
+def add_checkpoint_handlers(
+    objects_to_checkpoint,
+    evaluators,
+    checkpoints_dir,
+    wandb_logger_ins,
+    checkpoint_every_Nth_epoch,
+    checkpoint_score_name,
+):
+    """Create checkpoint handler for trainer and model.
+
+    Args:
+        trainer (ignite.engine.engine.Engine): trainer engine
+        model (torch.nn.Module): model to be saved
+        optimizer (torch.optim.Optimizer): optimizer to be saved
+        checkpoints_dir (str): directory to save checkpoints
+        wandb_logger_ins (wandb.wandb_run.Run): wandb logger instance
+        checkpoint_every_Nth_epoch (int): how frequently save the model
+
+    """
+    if wandb_logger_ins.run.settings.mode == 'disabled':
+        checkpoint_dir = checkpoints_dir
+    else:
+        checkpoint_dir = get_checkpoint_dir(checkpoints_dir,
+                                            wandb_logger_ins.run.dir,
+                                            wandb_logger_ins.run.id)
+
+    training_checkpoint = Checkpoint(
+        to_save=objects_to_checkpoint,
+        save_handler=DiskSaver(
+            checkpoint_dir,  # type: ignore
+            require_empty=False),
+        n_saved=2,  # only keep last 2
+        global_step_transform=lambda *_: objects_to_checkpoint['trainer'].state.
+        epoch,
+    )
+
+    objects_to_checkpoint['trainer'].add_event_handler(
+        Events.EPOCH_COMPLETED(
+            every=checkpoint_every_Nth_epoch),  # how frequently save the model
+        training_checkpoint)
+
+    if checkpoint_score_name == 'val_AUC_mean':
+        checkpoint_score_function = score_function_mean_AUC
+    elif checkpoint_score_name == 'val_AUC_min':
+        checkpoint_score_function = score_function_min_AUC
+    elif checkpoint_score_name == 'val_loss':
+        checkpoint_score_function = reverse_loss_function
+    elif checkpoint_score_name == 'val_f1_mean':
+        checkpoint_score_function = score_function_mean_F1
+    elif checkpoint_score_name == 'val_f1_min':
+        checkpoint_score_function = score_function_min_F1
+    else:
+        raise ValueError(
+            f"checkpoint_metric {checkpoint_score_name} not supported")
+
+    model_checkpoint = ModelCheckpoint(
+        checkpoint_dir,  # type: ignore
+        n_saved=2,
+        filename_prefix='best',
+        score_function=checkpoint_score_function,
+        score_name=checkpoint_score_name,
+        create_dir=True,
+        # to take the epoch of the `trainer`L
+        global_step_transform=global_step_from_engine(
+            objects_to_checkpoint['trainer']),
+    )
+    evaluators['val'].add_event_handler(
+        Events.COMPLETED, model_checkpoint,
+        {'model': objects_to_checkpoint['model']})
+
+    return model_checkpoint
+
+
+def resume_from_checkpoint(objects_to_checkpoint, checkpointfile_2resume):
+
+    #https://github.com/pytorch/ignite/blob/0bb3c6c0ac718258aeb0912744f9b8f3d32b7223/examples/mnist/mnist_save_resume_engine.py
+    # restore the best model
+    print(f"Resume from the checkpoint: {checkpointfile_2resume} !!!! ")
+
+    checkpoint = torch.load(checkpointfile_2resume)
+    Checkpoint.load_objects(to_load=objects_to_checkpoint,
+                            checkpoint=checkpoint)
+
+
+def save_best_predictions_and_targets(trainer, taxo_names, evaluators,
+                                      checkpoints_dir):
+    epoch = trainer.state.epoch
+    # print(f"Saving predictions and targets for best model at epoch {epoch}")
+    for eval_name, evaluator in evaluators.items():
+        if evaluator.state.output is not None:
+            # print(f"Saving predictions and targets for {eval_name} evaluator")
+            y_preds = []
+            y_targets = []
+            # y_pred and y are tensors of shape (batch_size, num_classes) in device
+            # in device
+            for y_pred, y in evaluator.state.output:
+                y_preds.append(y_pred)
+                y_targets.append(y)
+
+            save_predictions_and_targets(eval_name, taxo_names, epoch,
+                                         checkpoints_dir, y_preds, y_targets)
+        else:
+            print(
+                f"Warning: {eval_name} evaluator state output is None. Skipping saving predictions and targets for this evaluator."
+            )
+
+
+def save_predictions_and_targets(eval_name, taxo_names, epoch, checkpoints_dir,
+                                 y_preds, y_targets):
+    if taxo_names is None:
+        taxo_names = [f'label_{k}' for k in range(y_preds.shape[1])]
+
+    pred_columns = [f'pred_{taxo_name}' for taxo_name in taxo_names]
+    target_columns = [f'target_{taxo_name}' for taxo_name in taxo_names]
+
+    y_preds = torch.cat(y_preds, dim=0).cpu().numpy()
+    y_targets = torch.cat(y_targets, dim=0).cpu().numpy()
+
+    data = np.column_stack((y_targets, y_preds))
+    df = pd.DataFrame(data, columns=target_columns + pred_columns)
+
+    df['set'] = eval_name
+
+    save_path = Path(checkpoints_dir) / f"all_predictions_epoch_{epoch}.csv"
+    if not os.path.exists(save_path):
+        df.to_csv(save_path, index=False, mode='w')
+    else:
+        df.to_csv(save_path, index=False, mode='a', header=False)
+
+
+def compute_metrics(engine,
+                    wandb_logger_ins,
+                    best_values,
+                    dataloaders,
+                    evaluators,
+                    metrics,
+                    checkpoints_dir,
+                    taxo_names=None):
+    for name, evaluator in evaluators.items():
+        evaluator.run(dataloaders[name])
+
+    # save predictions and targets if valudation loss is the best
+    best_val_loss = best_values['val']['loss']['raw']['value']
+    if best_val_loss == -1:
+        pass
+    else:
+        if best_val_loss > evaluators['val'].state.metrics['loss']:
+            best_val_loss = evaluators['val'].state.metrics['loss']
+            save_best_predictions_and_targets(engine, taxo_names, evaluators,
+                                              checkpoints_dir)
+
+    print_metrics(evaluators)
+    for metric in metrics:
+        # (evaluators, trainer_state_iteration, current_epoch,
+        #   best_epoch, taxo_names, best_ROC_AUC)
+        if metric == 'loss':
+            continue
+        log_metric_stats(
+            evaluators,
+            wandb_logger_ins,
+            taxo_names,
+            engine.state.iteration,
+            engine.state.epoch,
+            best_values,
+            metric,
+        )
+
+    # log epochs seperatly to use in X axis
+    wandb_logger_ins.log({'epoch': engine.state.epoch},
+                         step=engine.state.iteration)
 
 
 def run(model,
@@ -52,98 +351,59 @@ def run(model,
 
     del run_name
 
-    train_loader = dataloaders['train']
-    val_loader = dataloaders['val']
-    test_loader = dataloaders['test']
-
     trainer = create_supervised_trainer(model,
                                         optimizer,
                                         criterion,
                                         device=device)
     trainer.logger = setup_logger('Trainer')
+    training_with_rawrecordings = config.get('RecordingsDataset',
+                                             {}).get('active', False)
+    eval_names = ['val']
+    if not training_with_rawrecordings:
+        eval_names.append('train')
+    if 'test' in dataloaders:
+        eval_names.append('test')
+    eval_names = tuple(eval_names)
 
-    train_evaluator = create_supervised_evaluator(model,
-                                                  metrics=metrics,
-                                                  device=device)
-    train_evaluator.logger = setup_logger('Train Evaluator')
-    validation_evaluator = create_supervised_evaluator(model,
-                                                       metrics=metrics,
-                                                       device=device)
-    validation_evaluator.logger = setup_logger('Val Evaluator')
-
-    test_evaluator = create_supervised_evaluator(model,
-                                                 metrics=metrics,
-                                                 device=device)
-    test_evaluator.logger = setup_logger('Test Evaluator')
-
+    evaluators = create_evaluators(model,
+                                   metrics,
+                                   device,
+                                   eval_names=eval_names)
     # best_ROC_AUC -> [mean,min]
-    best_ROC_AUC = [0, 0]
-    best_epoch = [0, 0]
-
-    @trainer.on(Events.EPOCH_COMPLETED, best_ROC_AUC, best_epoch, taxo_names)
-    def compute_metrics(engine, best_ROC_AUC, best_epoch, taxo_names=None):
-        train_evaluator.run(train_loader)
-        validation_evaluator.run(val_loader)
-        test_evaluator.run(test_loader)
-
-        roc_auc_array_val = validation_evaluator.state.metrics['ROC_AUC']
-        roc_auc_array_train = train_evaluator.state.metrics['ROC_AUC']
-        roc_auc_array_test = test_evaluator.state.metrics['ROC_AUC']
-
-        print('train loss', train_evaluator.state.metrics['loss'])
-        print('val loss', validation_evaluator.state.metrics['loss'])
-        print('test loss', test_evaluator.state.metrics['loss'])
-
-        print('train roc auc', roc_auc_array_train, engine.state.epoch)
-        print('validation roc auc', roc_auc_array_val, engine.state.epoch)
-        print('test roc auc', roc_auc_array_test, engine.state.epoch)
-
-        current_train_roc_auc_mean = np.mean(roc_auc_array_train)
-        current_train_roc_auc_mean = current_train_roc_auc_mean.item()
-
-        current_val_roc_auc_mean = np.mean(roc_auc_array_val)
-        current_val_roc_auc_mean = current_val_roc_auc_mean.item()
-
-        current_val_roc_auc_min = np.min(roc_auc_array_val)
-        current_val_roc_auc_min = current_val_roc_auc_min.item()
-
-        if current_val_roc_auc_mean > best_ROC_AUC[0]:
-            best_ROC_AUC[0] = current_val_roc_auc_mean
-            best_epoch[0] = engine.state.epoch
-            wandb_logger_ins.log(
-                {
-                    'best_mean_ROC_AUC': best_ROC_AUC[0],
-                    'best_mean_Epoch': best_epoch[0]
+    best_values = {
+        'val': {
+            'ROC_AUC': {
+                'mean': {
+                    'value': 0,
+                    'epoch': 0,
                 },
-                step=trainer.state.iteration)
-
-        if current_val_roc_auc_min > best_ROC_AUC[1]:
-            best_ROC_AUC[1] = current_val_roc_auc_min
-            best_epoch[1] = engine.state.epoch
-            wandb_logger_ins.log(
-                {
-                    'best_min_ROC_AUC': best_ROC_AUC[1],
-                    'best_min_Epoch': best_epoch[1]
+                'min': {
+                    'value': 0,
+                    'epoch': 0,
+                }
+            },
+            'f1': {
+                'mean': {
+                    'value': 0,
+                    'epoch': 0,
                 },
-                step=trainer.state.iteration)
-        #log epochs seperatly to use in X axis
-        wandb_logger_ins.log({'epoch': engine.state.epoch},
-                             step=trainer.state.iteration)
-        wandb_logger_ins.log({'val_roc_auc_mean': current_val_roc_auc_mean},
-                             step=trainer.state.iteration)
-        wandb_logger_ins.log({'train_roc_auc_mean': current_train_roc_auc_mean},
-                             step=trainer.state.iteration)
+                'min': {
+                    'value': 0,
+                    'epoch': 0,
+                }
+            },
+            'loss': {
+                'raw': {
+                    'value': 1e10,
+                    'epoch': 0,
+                },
+            },
+        }
+    }
 
-        if taxo_names is None:
-            taxo_names = [f'class_{k}' for k in range(len(roc_auc_array_val))]
-
-        for i, taxo_name in enumerate(taxo_names):  # type: ignore
-            wandb_logger_ins.log(
-                {f'val_roc_auc_{taxo_name}': roc_auc_array_val[i]},
-                step=trainer.state.iteration)
-            wandb_logger_ins.log(
-                {f'test_roc_auc_{taxo_name}': roc_auc_array_test[i]},
-                step=trainer.state.iteration)
+    # best_ROC_AUC = [0, 0]
+    # best_epoch = [0, 0]
+    # best_val_loss = 1e10
 
     if wandb_logger_ins is None:
         wandb_logger_ins = wandb_logger.WandBLogger(
@@ -152,15 +412,30 @@ def run(model,
             config=config,
         )
 
+    trainer.add_event_handler(
+        Events.EPOCH_COMPLETED,
+        compute_metrics,
+        evaluators=evaluators,
+        dataloaders=dataloaders,
+        wandb_logger_ins=wandb_logger_ins,
+        best_values=best_values,
+        taxo_names=taxo_names,
+        checkpoints_dir=wandb_logger_ins.run.dir,
+        metrics=metrics,
+    )
+
     wandb_logger_ins.attach_output_handler(
         trainer,
         event_name=Events.ITERATION_COMPLETED,  # could add (every=100),
         tag='training',  # type: ignore
         output_transform=lambda loss: {'batchloss': loss}  # type: ignore
     )
-
-    for tag, evaluator in [('training', train_evaluator),
-                           ('validation', validation_evaluator)]:
+    if training_with_rawrecordings:
+        tag_evaluator = [('validation', evaluators['val'])]
+    else:
+        tag_evaluator = [('training', evaluators['train']),
+                         ('validation', evaluators['val'])]
+    for tag, evaluator in tag_evaluator:
         # Attach the logger to the evaluator on the training dataset and log NLL, Accuracy metrics after each epoch
         # We setup `global_step_transform=lambda *_: trainer.state.iteration` to take iteration value
         # of the `trainer`:
@@ -168,7 +443,8 @@ def run(model,
             evaluator,
             event_name=Events.EPOCH_COMPLETED,
             tag=tag,
-            metric_names=['loss', 'ROC_AUC'],  # type: ignore
+            # metric_names=['loss', 'ROC_AUC'],  # type: ignore
+            metric_names=['loss'],  # type: ignore
             global_step_transform=lambda *_: trainer.state.
             iteration,  # type: ignore
         )
@@ -177,32 +453,6 @@ def run(model,
         trainer, event_name=Events.EPOCH_COMPLETED, optimizer=optimizer)
     wandb_logger_ins.watch(model, log='all')
 
-    def score_function_mean(engine):
-        return np.mean(engine.state.metrics['ROC_AUC']).item()
-
-    def score_function2(engine):
-        print('loss', engine.state.metrics['loss'])
-        return engine.state.metrics['loss']
-
-    def score_funtion_min(engine):
-        return np.min(engine.state.metrics['ROC_AUC']).item()
-
-    if checkpoints_dir is None:
-        checkpoint_dir = Path(wandb_logger_ins.run.dir) / 'checkpoints'
-        checkpoints_dir.mkdir(exist_ok=True)
-    else:
-        wandb_logger_ins_run_dir = Path(wandb_logger_ins.run.dir)
-        #run-20210429_035224-12tsplqm/files
-        run_timestamp_id = wandb_logger_ins_run_dir.parent.stem.split('-')
-        (wandb_logger_ins_run_id) = str(wandb_logger_ins.run.id)
-        if wandb_logger_ins_run_id != run_timestamp_id[-1]:
-            raise Exception(
-                f' ID from wandb_logger_ins.run.dir name is not correct {wandb_logger_ins_run_id},{run_timestamp_id}'
-            )
-        timestamp = run_timestamp_id[1]
-        checkpoint_dir = checkpoints_dir / '-'.join(
-            (('run', timestamp, wandb_logger_ins_run_id)))
-
     # Setup object to checkpoint
     objects_to_checkpoint = {
         "trainer": trainer,
@@ -210,361 +460,295 @@ def run(model,
         "optimizer": optimizer,
         # "lr_scheduler": lr_scheduler # we do not have scheduler
     }
-    training_checkpoint = Checkpoint(
-        to_save=objects_to_checkpoint,
-        save_handler=DiskSaver(
-            checkpoint_dir,  # type: ignore
-            require_empty=False),
-        n_saved=2,  # only keep last 2
-        global_step_transform=lambda *_: trainer.state.epoch,
+    add_checkpoint_handlers(
+        objects_to_checkpoint,
+        evaluators,
+        checkpoints_dir,
+        wandb_logger_ins,
+        config['checkpoint_every_Nth_epoch'],
+        checkpoint_score_name=config['checkpoint_metric'],
     )
-
-    trainer.add_event_handler(
-        Events.EPOCH_COMPLETED(every=config['checkpoint_every_Nth_epoch']
-                              ),  # how frequently save the model
-        training_checkpoint)
-
-    model_checkpoint = ModelCheckpoint(
-        checkpoint_dir,  # type: ignore
-        n_saved=2,
-        filename_prefix='best',
-        score_function=score_function_mean,
-        score_name='mean_ROC_AUC',
-        create_dir=True,
-        # to take the epoch of the `trainer`L
-        global_step_transform=global_step_from_engine(trainer),
-    )
-
-    validation_evaluator.add_event_handler(Events.COMPLETED, model_checkpoint,
-                                           {'model': model})
 
     if config['patience'] > 1:
         es_handler = EarlyStopping(patience=config['patience'],
-                                   score_function=score_function2,
+                                   score_function=score_function_loss,
                                    trainer=trainer)
-        validation_evaluator.add_event_handler(Events.COMPLETED, es_handler)
+        evaluators['val'].add_event_handler(Events.COMPLETED, es_handler)
 
-    #https://github.com/pytorch/ignite/blob/0bb3c6c0ac718258aeb0912744f9b8f3d32b7223/examples/mnist/mnist_save_resume_engine.py
     if wandb_logger_ins.run.resumed:
-        # restore the best model
-        checkpoint_file2resume = config['checkpointfile_2resume']
-        print(f"Resume from the checkpoint: {checkpoint_file2resume} !!!! ")
+        resume_from_checkpoint(objects_to_checkpoint,
+                               config['checkpointfile_2resume'])
 
-        checkpoint = torch.load(checkpoint_file2resume)
-        Checkpoint.load_objects(to_load=objects_to_checkpoint,
-                                checkpoint=checkpoint)
 
 #     kick everything off
-    trainer.run(train_loader, max_epochs=config['epochs'])
+    trainer.run(dataloaders['train'], max_epochs=config['epochs'])
 
     wandb_logger_ins.close()
 
 
-# def clipped_mel_loop(XArrays, maxMelLen):
-#     '''
-#   maxMelLen: will clip arrays after that threshold, 850 for randomAdd
-#   because it does not change original size of 10second audio files
+def create_multi_label_vector(alphabet, y_data):
+    # define input string
+    # define universe of possible input values
+    # alphabet = ['1.1.10','1.1.7']
 
-#   ! samping rate is hard coded
-#   '''
-#     results = []
-#     for X_array_i in range(len(XArrays)):
-#         X_array = XArrays[X_array_i]
-#         for index, y in enumerate(X_array):
+    # define a mapping of chars to integers
+    char_to_int = dict((c, i) for i, c in enumerate(alphabet))
+    # int_to_char = dict((i, c) for i, c in enumerate(alphabet))
 
-#             mel = librosa.feature.melspectrogram(y=y.reshape(-1), sr=44100)
-#             an_x = librosa.power_to_db(mel, ref=np.max)
-#             an_x = an_x.astype('float32')
-#             if index == 0:
-#                 XMel = np.empty((X_array.shape[0], 128, maxMelLen),
-#                                 dtype=np.float32)
-#             XMel[index, :, :] = an_x[:, :maxMelLen]
-#             # if index%100==0:
-#             #     print(index)
-#     #     X_array = XMel[:]
-#         results.append(XMel)
-#     #     print(X_array.shape)
-#     return results
+    integer_encoded = []
+    for taxo_codes in y_data:
+        int_values = [char_to_int.get(taxo, None) for taxo in taxo_codes]
+        int_values = [x for x in int_values if x is not None]
+        integer_encoded.append(int_values)
+
+    onehot_encoded = list()
+    #     print(integer_encoded)
+    for values in integer_encoded:
+        letter = [0 for _ in range(len(alphabet))]
+        for value in values:
+            #             print(value)
+            letter[value] = 1
+        onehot_encoded.append(letter)
+    return onehot_encoded
 
 
-class audioDataset(Dataset):
+def remove_train_data_from_dataset(audio_dataset, config):
+    print(config['loc_per_set'])
+    keys2remove = []
+    for key, sound_ins in audio_dataset.items():
+        set_type = get_set_type(sound_ins.region, sound_ins.location,
+                                config['loc_per_set'])
+        if set_type == 'train':
+            keys2remove.append(key)
+    for key in keys2remove:
+        del audio_dataset[key]
+    return audio_dataset
 
-    def __init__(self,
-                 X,
-                 y=None,
-                 transform=None,
-                 data_by_reference=False,
-                 non_associative_labels=None):
-        '''
-    Args:
 
-    '''
-        self.X = X
-        self.y = y
-        #         self.landmarks_frame = pd.read_csv(csv_file)
-        #         self.root_dir = root_dir
-        self.transform = transform
-        self.data_by_reference = data_by_reference
-        if non_associative_labels is None:
-            self.non_associative_labels = []
+def shorten_dataset4debug(audio_dataset,
+                          config,
+                          counts=(100, 10, 10),
+                          ignore_train=False):
+    train, test, val = [], [], []
+    for key, sound_ins in audio_dataset.items():
+        set_type = get_set_type(sound_ins.region, sound_ins.location,
+                                config['loc_per_set'])
+        if set_type == 'train':
+            train.append(key)
+        elif set_type == 'test':
+            test.append(key)
+        elif set_type == 'valid':
+            val.append(key)
         else:
-            self.non_associative_labels = non_associative_labels
+            train.append(key)
 
-    def __len__(self):
-        if isinstance(self.X, np.ndarray):
-            return self.X.shape[0]
+    # randomly pick 100 samples from train, 10 from test and 10 from val
+    if ignore_train:
+        train = np.empty(0)
+    else:
+        train = np.random.choice(train, counts[0], replace=False)
+    test = np.random.choice(test, counts[1], replace=False)
+    val = np.random.choice(val, counts[2], replace=False)
+    # combine them
+    debug_keys = train.tolist() + test.tolist() + val.tolist()
+    all_keys = list(audio_dataset.keys())
+    for key in all_keys:
+        if key not in debug_keys:
+            del audio_dataset[key]
+
+    return audio_dataset
+
+
+def make_locs_caseinsensitive(locs_per_set):
+    # make all keys and values lower case
+    # location_id_info is a dict with keys as set names and values as list of tuples
+    # each tuple is (region, location_id)
+    locs_per_set_lower = {}
+    for key, val in locs_per_set.items():
+        locs_per_set_lower[key.lower()] = [
+            (x[0].lower(), x[1].lower()) for x in val
+        ]
+
+    # give a warning if there are duplicate keys
+    if len(locs_per_set_lower.keys()) != len(locs_per_set.keys()):
+        raise ValueError('Duplicate keys in location_id_info')
+    # give a warning if there are duplicate values
+    all_values = []
+    for key, val in locs_per_set_lower.items():
+        all_values.extend(val)
+    if len(all_values) != len(set(all_values)):
+        raise ValueError('Duplicate values in location_id_info')
+
+    return locs_per_set_lower
+
+
+def get_set_type(reg, loc, loc_per_set):
+    """
+    Given a tuple of (reg, location), returns 'train', 'valid', or 'test' depending on which one the location is in.
+    """
+    reg, loc = str(reg), str(loc)
+    reg_loc_tuple = (reg.lower(), loc.lower())
+
+    for set_lists in loc_per_set.values():
+        if set_lists and not isinstance(set_lists[0], tuple):
+            loc_per_set = make_locs_caseinsensitive(loc_per_set)
+
+    for set_type in ['train', 'test', 'valid']:
+        if reg_loc_tuple in loc_per_set[set_type]:
+            return set_type
+
+    print('WARNING: ' +
+          f'This sample is NOT from a location ({reg_loc_tuple}) that is from' +
+          ' pre-determined training,test,validation locations')
+    return None
+
+
+def split_train_test_val(x_data,
+                         location_id_info,
+                         onehot_encoded,
+                         loc_per_set,
+                         data_by_reference=False):
+    X_train, X_test, X_val, y_train, y_test, y_val = [], [], [], [], [], []
+    loc_id_train = []
+    loc_id_test = []
+    loc_id_valid = []
+    assert len(x_data) == len(onehot_encoded)
+    assert len(x_data) == len(location_id_info)
+    loc_per_set = make_locs_caseinsensitive(loc_per_set)
+
+    for sample, y_val_ins, loc_id in zip(  # type: ignore
+            x_data, onehot_encoded, location_id_info):
+        set_type = get_set_type(loc_id[0], loc_id[1], loc_per_set)
+        if set_type == 'train':
+            X_train.append(sample)
+            y_train.append(y_val_ins)
+            loc_id_train.append(loc_id)
+        elif set_type == 'test':
+            X_test.append(sample)
+            y_test.append(y_val_ins)
+            loc_id_test.append(loc_id)
+        elif set_type == 'valid':
+            X_val.append(sample)
+            y_val.append(y_val_ins)
+            loc_id_valid.append(loc_id)
         else:
-            return len(self.X)
+            pass
+    if not data_by_reference:
+        if type(X_train[0]) == np.ndarray:
+            X_train, X_test, X_val = np.array(X_train), np.array(
+                X_test), np.array(X_val)
 
-    def get_x(self, idx):
-        if self.data_by_reference:
-            x, _ = self.X[idx].get_data_by_value()
-            x = torch.from_numpy(x).float()
+            X_train, X_test, X_val = torch.from_numpy(
+                X_train).float(), torch.from_numpy(
+                    X_test).float(), torch.from_numpy(X_val).float()
+        elif type(X_train[0]) == torch.Tensor:
+            # X_train, X_test, X_val = torch.stack(X_train), torch.stack(
+            # X_test), torch.stack(X_val)
+            pass
         else:
-            x = self.X[idx]
-        return x
+            raise ValueError(
+                f'{X_train[0]} is neither a numpy array nor a torch tensor')
 
-    def __getitem__(self, idx):
-        x = self.get_x(idx)
+    # else:
+    #     # we can just use reference to the audio instances
+    #     pass
 
-        if self.y is None:
-            sample = x, torch.zeros((2))
+    y_train, y_test, y_val = np.array(y_train), np.array(y_test), np.array(
+        y_val)
+    y_train, y_test, y_val = torch.from_numpy(y_train).float(
+    ), torch.from_numpy(y_test).float(), torch.from_numpy(y_val).float()
+
+    return X_train, X_test, X_val, y_train, y_test, y_val
+
+
+def setup(config):
+
+    (device_str, exp_dir, run_id_2resume,
+     checkpointfile_2resume) = (config['device'], config['exp_dir'],
+                                config['run_id_2resume'],
+                                config['checkpointfile_2resume'])
+
+    if config['debug']:
+        # print some debug info
+        print('################---DEBUG MODE---###################')
+        config['epochs'] = 5
+
+    random_seed: int = 423590
+    # reproducibility results
+    torch.manual_seed(random_seed)
+    np.random.seed(random_seed)
+    random.seed(random_seed)
+    torch.backends.cudnn.benchmark = False  # type: ignore
+
+    Path(exp_dir).mkdir(exist_ok=True, parents=True)
+    os.chdir(exp_dir)
+
+    device = torch.device(f"cuda:{device_str}" if torch.cuda.is_available() else
+                          "cpu")  # type: ignore
+    config['device'] = device
+    # wandb.init(config=config, project=wandb_project_name) # type: ignore
+    # config = wandb.config # type: ignore
+
+    if run_id_2resume == '':
+        run_id = wandb.util.generate_id()  # type: ignore
+    else:
+        run_id = run_id_2resume
+        print(f'run id found to be RESUMED!: {run_id}')
+
+    if run_id_2resume != '' and run_id_2resume == '':
+        raise Exception(
+            'We need both run_id_2resume and checkpointfile_2resume to resume')
+    elif run_id_2resume == '' and checkpointfile_2resume != '':
+        raise Exception(
+            'We need both run_id_2resume and checkpointfile_2resume to resume')
+    config['run_id'] = run_id
+    return config
+
+
+def print_dataset_sizes(sound_datasets, y_train, y_test, y_val):
+    print('train_size', len(sound_datasets['train']))
+    if 'test' in sound_datasets:
+        print('test_size', len(sound_datasets['test']))
+    print('val_size', len(sound_datasets['val']))
+
+    print('train category sizes:', torch.sum(y_train, 0))
+    if 'test' in sound_datasets:
+        print('test category sizes:', torch.sum(y_test, 0))
+    print('val category sizes:', torch.sum(y_val, 0))
+
+
+def put_samples_into_array(audio_dataset,
+                           data_by_reference=False,
+                           target_taxo=None,
+                           y_type='binary'):  # sound_ins[1].taxo_code
+    x_data = []
+    y = []
+    location_info = []
+    for sound_ins in audio_dataset.values():
+        if y_type == 'binary':
+            sample_y_filtered = [
+                taxo_code for taxo_code, y_value in sound_ins.taxo_y.items()
+                if taxo_code in target_taxo and y_value == 1
+            ]
+        elif y_type == 'continuous':
+            sample_y_filtered = [
+                y_value for taxo_code, y_value in sound_ins.taxo_y.items()
+                if taxo_code in target_taxo
+            ]
         else:
-            sample = x, self.y[idx]
-
-        if self.transform:
-            sample = self.transform(sample)
-
-        return sample
-
-
-class AugmentingAudioDataset(Dataset):
-
-    def __init__(self,
-                 X,
-                 y=None,
-                 transform=None,
-                 batch_transforms=None,
-                 sampling_rate=None,
-                 mix_channels_coeff=None,
-                 gauss_max_amplitude=0.015,
-                 data_by_reference=False,
-                 non_associative_labels=None):
-        '''
-    Args:
-
-    '''
-        self.X = X
-        self.y = y
-        self.data_by_reference = data_by_reference
-        #         self.landmarks_frame = pd.read_csv(csv_file)
-        #         self.root_dir = root_dir
-        self.transform = transform
-        self.id_mix = []
-        self.batch_transforms = batch_transforms
-        self.sampling_rate = sampling_rate
-        self.mix_channels_coeff = mix_channels_coeff
-        self.gauss_max_amplitude = gauss_max_amplitude
-        if self.batch_transforms is None:
-            self.batch_transforms = []
-
-        if non_associative_labels is None:
-            self.non_associative_labels = []
-        else:
-            self.non_associative_labels = non_associative_labels
-        # count y values
-        #
-        print(self.batch_transforms)
-        if self.batch_transforms != []:
-            self.row_index_4_col = self.where_is_classes_in_y(self.y)
-
-        if 'AddGaussianNoise' in self.batch_transforms:
-            self.audiomentations_augment = Compose([
-                AddGaussianNoise(min_amplitude=0.01,
-                                 max_amplitude=self.gauss_max_amplitude,
-                                 p=0.5),
-            ])
-
-    def __len__(self):
-        if isinstance(self.X, np.ndarray):
-            return self.X.shape[0]
-        else:
-            return len(self.X)
-
-    def get_x(self, idx):
-        if self.data_by_reference:
-            x, sr = self.X[idx].get_data_by_value()
-            if sr != self.sampling_rate:
-                print('sampling_rate not match!', sr, self.sampling_rate)
-            x = torch.from_numpy(x).float()
-        else:
-            x = self.X[idx]
-        return x
-
-    def __getitem__(self, idx):
-        sample = None
-
-        x = self.get_x(idx)
-        # Merge augmentation
-        # sample = self.random_merge()
-        # sample = self.random_mergev2()
-
-        # SpecAugmentation(time_drop_width=64, time_stripes_num=2,
-        # freq_drop_width=8, freq_stripes_num=2)
-
-        # no augmentation
-        if not self.batch_transforms:
-            if self.y is None:
-                sample = x, torch.zeros((2))
+            raise ValueError('y_type must be binary or continuous')
+        # if data is in mmemory, we need to copy the data
+        if not data_by_reference:
+            if sound_ins.samples:
+                raise Exception("samples deprecated! why is not it empty?")
             else:
-                sample = x, self.y[idx]
-
-        if 'random_mergev2' in self.batch_transforms:  # type: ignore
-            sample = self.random_mergev2(
-                non_associative_labels=self.non_associative_labels)
-        elif 'random_merge' in self.batch_transforms:  # type: ignore
-            sample = self.random_merge(
-                non_associative_labels=self.non_associative_labels)
-        elif 'random_merge_fair' in self.batch_transforms:  # type: ignore
-            sample = self.random_merge_fair(
-                non_associative_labels=self.non_associative_labels)
-        # for bath_transfrom in self.batch_transforms:
-
-        if 'mix_channels' in self.batch_transforms:  # type: ignore
-            sample = self.mix_channels(
-                sample, mix_channels_coeff=self.mix_channels_coeff)
-
-        if 'random_merge_fair' in self.batch_transforms:  # type: ignore
-            if 'random_merge' in self.batch_transforms:  # type: ignore
-                raise (Exception(
-                    'random_merge and random_merge_fair cannot be applied together'
-                ))
-
-        if 'AddGaussianNoise' in self.batch_transforms:  # type: ignore
-            x = self.audiomentations_augment(
-                samples=sample[0],  # type: ignore
-                sample_rate=self.sampling_rate)
-            sample = (x, sample[1])  # type: ignore
-
-        if sample is None:
-            raise TypeError(
-                f"augment_type is not implemented: {self.batch_transforms}")
-
-        if self.transform:
-            sample = self.transform(sample)
-
-        return sample
-
-    def mix_channels(self, sample, mix_channels_coeff):
-        '''
-            Mix audio channels by given coeff.
-        '''
-        #         print(sample[0].shape)
-        if random.randint(0, 1) == 0:
-            sample = sample[0, :] * (
-                1 - mix_channels_coeff) + sample[1, :] * mix_channels_coeff
+                y.append(sample_y_filtered)
+                x_data.append(sound_ins.data)
+        # if loading data from disk every time, we can just use reference to the audio instances
         else:
-            sample = sample[1, :] * (
-                1 - mix_channels_coeff) + sample[0, :] * mix_channels_coeff
-        return sample
+            y.append(sample_y_filtered)
+            x_data.append(sound_ins)
 
-    def flip_coin_for_silence(self, y, silence_index):
-        '''half of the time pick silence over everything else'''
-        if y[silence_index] == 1:
-            #half the time make it a silence
-            if random.randint(0, 1) == 0:
-                y = torch.zeros_like(y)
-                y[silence_index] = 1
-            #other half of the time make it a sound
-            else:
-                y[silence_index] = 0
+        location_info.append((sound_ins.region, sound_ins.location))
 
-        return y
-
-    def merge_samples(self, id_1, id_2, non_associative_labels=None):
-        left_y = self.y[id_1]  # type: ignore
-        right_y = self.y[id_2]  # type: ignore
-
-        left = self.get_x(id_1)
-        right = self.get_x(id_2)
-
-        x = (left + right) / 2
-
-        y_merged = left_y + right_y
-        # if only one of them is 1 then y is one anyway
-        # so we just change 2s to 1
-        y_merged[y_merged == 2.0] = 1
-        silence_index = non_associative_labels[0]
-        y_merged = self.flip_coin_for_silence(y_merged, silence_index)
-        # if silence is picked, then we need to use only silent sample
-        # if both are silent, then we need to use both
-        if y_merged[silence_index] == 1:
-            if left_y[silence_index] == 1 and right_y[silence_index] == 1:
-                x = x
-            else:
-                x = left if left_y[silence_index] == 1 else right
-
-        return x, y_merged
-
-    def random_merge(self, non_associative_labels=None):
-        '''
-            Randomly pick two samples and merge them, with replacement.
-        '''
-
-        random_id_1 = -1
-        random_id_2 = -1
-        while random_id_1 == random_id_2:
-            random_id_1 = random.randint(0, self.__len__() - 1)
-            random_id_2 = random.randint(0, self.__len__() - 1)
-
-        x, y = self.merge_samples(random_id_1,
-                                  random_id_2,
-                                  non_associative_labels=non_associative_labels)
-        return x, y
-
-    def shuffle_indexes(self,):
-        self.id_mix = list(range(self.__len__()))
-        random.shuffle(self.id_mix)
-
-    def random_mergev2(self, non_associative_labels=None):
-        '''
-            Randomly pick two samples and merge them, without replacement.
-        '''
-        if len(self.id_mix) < 2:
-            self.shuffle_indexes()
-
-        random_id_1 = self.id_mix.pop()
-        random_id_2 = self.id_mix.pop()
-
-        x, y = self.merge_samples(random_id_1,
-                                  random_id_2,
-                                  non_associative_labels=non_associative_labels)
-        return x, y
-
-    def random_merge_fair(self, non_associative_labels=None):
-
-        random_id_1 = self.pick_fair_sample(self.y, self.row_index_4_col)
-        random_id_2 = self.pick_fair_sample(self.y, self.row_index_4_col)
-        x, y = self.merge_samples(random_id_1,
-                                  random_id_2,
-                                  non_associative_labels=non_associative_labels)
-        return x, y
-
-    def where_is_classes_in_y(self, y):
-        row_index_4_col = []
-        for col_i in range(y.shape[1]):
-            bb = np.argwhere(y[:, col_i] == 1)
-            row_index_4_col.append(bb.flatten())
-        return row_index_4_col
-
-    def pick_fair_sample(self, y, row_index_4_col):
-
-        number_of_classes = y.shape[1]
-        # pick a random class
-        random_class = (np.random.randint(0, number_of_classes))
-        # pick a random sample from that class
-        sample_indexes_4_class = row_index_4_col[random_class]
-        fair_random_sample_id = np.random.choice(sample_indexes_4_class,
-                                                 size=(1))
-
-        return fair_random_sample_id[0]
+    return x_data, y, location_info

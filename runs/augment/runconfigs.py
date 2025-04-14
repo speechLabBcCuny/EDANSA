@@ -1,129 +1,163 @@
 """Configs for the augment.
 """
 from pathlib import Path
+import torch
 
 PROJECT_NAME = 'edansa'
 DATASET_NAME_V = 'edansa_v5'
 #   DEFAULT values,
 # might be changed by command arguments or by setting wandb args
 default_config = {
+    'project_name': PROJECT_NAME,
+    'dataset_name_v': DATASET_NAME_V,
     'batch_size': 32,
-    'epochs': 1500,
+    'epochs': 500,
     'patience': -1,
+    'learning_rate': 1e-3,  # default 1e-3,
+    'weight_decay': 1e-2,  # pytorch default 1e-2,
     'device': 0,
     'run_id_2resume': '',  # wandb run id to resume
     'checkpointfile_2resume': '',  # full path
     'checkpoint_every_Nth_epoch': 100,
-    # augmentation params
-    'spec_augmenter': True,
-    'random_mergev2': True,
-    'random_merge_fair': False,
-    'AddGaussianNoise': True,
-    'gauss_max_amplitude': 0.015,
-    'mix_channels': False,
-    'mix_channels_coeff': 0.3,
-    'intermediate_pool_type': 'max',  # avg+max | avg | max | 
-    'global_pool_type': 'avg+max',  # avg+max | avg | max | empty string
-    'FILTER_DATA_BY_SHAPLEY': False,
-    'shapley_csv': '/scratch/arsyed/alaska/journal/shaps.csv',
-    'shapley_sample_id_csv': (
-        'preds/datasetV3.1.1/' +
-        'run-20220215_231152-2sqvtwmy_best_model_62_mean_ROC_AUC=0.9005_wcols.csv'
-    ),
-    'shapley_value_col_id': 'shaps_ml',
-    'shapley_filter_percentage': 0.20,
-    'shapley_filter_strategy': 'best2worst',
-    'FLIP_Y_BY_SHAPLEY': False,
-    'shapley_sample_count': 200,
+    'checkpoint_metric': 'val_f1_min',  # 'val_AUC_min', 'val_loss'
+    'augmentations': {  # augmentation params
+        'spec_augmenter': True,
+        'random_mergev2': True,
+        'random_merge_fair': False,
+        'AddGaussianNoise': True,
+        'gauss_max_amplitude': 0.015,
+        'mix_channels': False,
+        'mix_channels_coeff': 0.3
+    },
+    'arch': {
+        'feature_method': 'logmel',  # 'logmel', 'mfcc', 'spectrogram'
+        'intermediate_pool_type': 'max',  # avg+max | avg | max | 
+        'global_pool_type': 'avg+max',  # avg+max | avg | max | empty string
+        'loss': 'BCEWithLogitsLoss',  # 'CrossEntropyLoss', 'BCEWithLogitsLoss'
+        'loss_weights': [],  # [] or [1,1] for no weights,
+    },
 }
 
-TAXO_COUNT_LIMIT = 0
+default_config['wandb_mode'] = 'online'  # offline
 
-# audio.divide_long_sample ignores less than SAMPLE_LENGTH_LIMIT seconds
+default_config['load_clipping'] = True
+
+# audio.divide_long_sample ignores less than 5 seconds
 #   if file longer than 10 seconds but have extra seconds
 #   ex: if it is 54 seconds
 #   we get 5 samples and 4 seconds is ignored
-SAMPLE_LENGTH_LIMIT = 2
-SAMPLES_FIXED_SIZE = True
-DATA_FROM_DISK = True
-if not SAMPLES_FIXED_SIZE and DATA_FROM_DISK:
-    raise ValueError('Cannot use DATA_FROM_DISK without SAMPLES_FIXED_SIZE')
+default_config['sample_length_limit'] = 2
+default_config['dataset_in_memory'] = True
+default_config['sampling_rate'] = 48000
 
-SAMPLING_RATE = 48000
-EXP_DIR = Path('./')
+default_config['channels'] = 1
+default_config['exp_dir'] = ('./')
+default_config['excerpt_length'] = 10
+default_config['max_mel_len'] = 938  # old 850
+default_config['audio_dtype'] = torch.float32
 
-CATEGORY_COUNT = 9
-EXCERPT_LENGTH = 10
-MAX_MEL_LEN = 938  # old 850
+default_config['taxonomy_file_path'] = Path(
+    '../../assets/taxonomy/taxonomy_V2.yaml')
+default_config['dataset_cache_folder'] = Path(f'./{DATASET_NAME_V}/')
 
-TAXONOMY_FILE_PATH = Path('./assets/taxonomy/taxonomy_V2.yaml')
+default_config['dataset_folder'] = None  # './assets/EDANSA-2019/data/'
+default_config['audio_data_cache_path'] = ''
+default_config['dataset_csv_path'] = ('../../assets/labels.csv')
 
-DATASET_CACHE_FOLDER = Path('./datasetV5_cache/')
+# FILES_AS_NP_FILTERED = DATASET_FOLDER / 'files_as_np_filtered_v1.pkl'
 
-AUDIO_DATA_CACHE_PATH = ''
+default_config['ignore_files'] = list(set([]))
+default_config['target_taxo'] = [
+    '1.0.0',  # bio 1.71
+    '1.1.0',  # bird 2.42
+    '1.1.10',  # songbirds 4.38
+    '1.1.7',  # duck-goose-swan 15.315
+    '0.0.0',  # anthrophony  3.52
+    '1.3.0',  # insect, bug  5.42
+    '1.1.8',  # grouse-ptarmigan 24.84
+    '0.2.0',  # aircraft 6.36
+    '3.0.0',  # sil 8.02
+    # '2.0.0',  # geo
+    # '2.1.0',  # rain
+    # '2.3.0',  # wind
+]
 
-DATASET_CSV_PATH = ('./assets/labels.csv')
-DATASET_FOLDER = './assets/EDANSA-2019/data/'
+default_config['excell_names2code'] = {
+    'Sil': '3.0.0',
+    'Bio': '1.0.0',
+    'Airc': '0.2.0',  # aircraft
+    # 'Rain': '2.1.0',
+    'Grous': '1.1.8',  # grouse-ptarmigan
+    'Bug': '1.3.0',  # insect
+    'SongB': '1.1.10',  # songbirds
+    'DGS': '1.1.7',  # duck-goose-swan
+    'Anth': '0.0.0',  # anthrophony
+    # 'Geo': '2.0.0',
+    'Bird': '1.1.0',
+    # 'Wind': '2.3.0'
+}
 
-IGNORE_FILES = set([
-    # 'S4A10268_20190610_103000_bio_anth.wav',  # has two topology bird/plane
+default_config['category_count'] = len(default_config['target_taxo'])
+default_config['code2excell_names'] = {
+    v: k for k, v in default_config['excell_names2code'].items()
+}
+
+print([
+    default_config['code2excell_names'][x]
+    for x in default_config['target_taxo']
 ])
 
-EXCELL_NAMES2CODE = {
-    'anth': '0.0.0',
-    'auto': '0.1.0',
-    'car': '0.1.2',
-    'truck': '0.1.1',
-    'prop': '0.2.1',
-    'helo': '0.2.2',
-    'jet': '0.2.3',
-    'mach': '0.3.0',
-    'bio': '1.0.0',
-    'bird': '1.1.0',
-    'crane': '1.1.11',
-    'corv': '1.1.12',
-    'hum': '1.1.1',
-    'shorb': '1.1.2',
-    'rapt': '1.1.4',
-    'owl': '1.1.6',
-    'woop': '1.1.9',
-    'bug': '1.3.0',
-    'bugs': '1.3.0',
-    'insect': '1.3.0',
-    'dgs': '1.1.7',
-    'flare': '0.4.0',
-    'fox': '1.2.4',
-    'geo': '2.0.0',
-    'grouse': '1.1.8',
-    'grous': '1.1.8',
-    'loon': '1.1.3',
-    'loons': '1.1.3',
-    'mam': '1.2.0',
-    'bear': '1.2.2',
-    'plane': '0.2.0',
-    'ptarm': '1.1.8',
-    'rain': '2.1.0',
-    'seab': '1.1.5',
-    'seabirds': '1.1.5',
-    'mous': '1.2.1',
-    'deer': '1.2.3',
-    'woof': '1.2.4',
-    'weas': '1.2.5',
-    'meow': '1.2.6',
-    'hare': '1.2.7',
-    'shrew': '1.2.8',
-    'fly': '1.3.2',
-    'silence': '3.0.0',
-    'sil': '3.0.0',
-    'songbird': '1.1.10',
-    'songb': '1.1.10',
-    'birdsong': '1.1.10',
-    'unknown': 'X.X.X',
-    'water': '2.2.0',
-    'x': 'X.X.X',
-    'airc': '0.2.0',
-    'aircraft': '0.2.0',
-    'mosq': '1.3.1',
-    'wind': '2.3.0',
-    'windy': '2.3.0',
+not_original_train_set = [('anwr', '35'), ('anwr', '42'), ('anwr', '43'),
+                          ('dalton', '01'), ('dalton', '02'), ('dalton', '03'),
+                          ('dalton', '04'), ('dalton', '05'), ('dalton', '06'),
+                          ('dalton', '07'), ('dalton', '08'), ('dalton', '09'),
+                          ('dalton', '10'), ('dempster', '11'),
+                          ('dempster', '12'), ('dempster', '13'),
+                          ('dempster', '14'), ('dempster', '15'),
+                          ('dempster', '16'), ('dempster', '17'),
+                          ('dempster', '19'), ('dempster', '20'),
+                          ('dempster', '21'), ('dempster', '22'),
+                          ('dempster', '23'), ('dempster', '24'),
+                          ('dempster', '25'), ('ivvavik', 'ar01'),
+                          ('ivvavik', 'ar02'), ('ivvavik', 'ar03'),
+                          ('ivvavik', 'ar04'), ('ivvavik', 'ar05'),
+                          ('ivvavik', 'ar06'), ('ivvavik', 'ar07'),
+                          ('ivvavik', 'ar08'), ('ivvavik', 'ar09'),
+                          ('ivvavik', 'ar10'), ('ivvavik', 'sinp01'),
+                          ('ivvavik', 'sinp02'), ('ivvavik', 'sinp03'),
+                          ('ivvavik', 'sinp04'), ('ivvavik', 'sinp05'),
+                          ('ivvavik', 'sinp06'), ('ivvavik', 'sinp07'),
+                          ('ivvavik', 'sinp08'), ('ivvavik', 'sinp09'),
+                          ('ivvavik', 'sinp10'), ('prudhoe', '23'),
+                          ('prudhoe', '28')]
+
+loc_per_set_train = not_original_train_set + [('anwr', '41'), ('prudhoe', '21'),
+                                              ('anwr', '49'), ('anwr', '48'),
+                                              ('prudhoe', '19'),
+                                              ('prudhoe', '16'), ('anwr', '39'),
+                                              ('prudhoe', '30'), ('anwr', '38'),
+                                              ('prudhoe', '22'),
+                                              ('prudhoe', '11'), ('anwr', '37'),
+                                              ('anwr', '44'), ('anwr', '33'),
+                                              ('prudhoe', '29'), ('anwr', '46'),
+                                              ('prudhoe', '25'),
+                                              ('prudhoe', '13'),
+                                              ('prudhoe', '24'),
+                                              ('prudhoe', '17'), ('anwr', '40'),
+                                              ('prudhoe', '14')]
+loc_per_set_val = [('prudhoe', '15'), ('prudhoe', '20'), ('anwr', '31'),
+                   ('anwr', '47'), ('anwr', '34')]
+
+loc_per_set_test = [('prudhoe', '12'), ('prudhoe', '27'), ('prudhoe', '26'),
+                    ('anwr', '45'), ('anwr', '50'), ('prudhoe', '18'),
+                    ('anwr', '32'), ('anwr', '36')]
+
+default_config['loc_per_set'] = {
+    'train': loc_per_set_train,
+    'valid': loc_per_set_val,
+    'test': loc_per_set_test
 }
+
+if default_config['arch']['loss_weights']:
+    assert len(default_config['arch']['loss_weights']) == len(
+        default_config['target_taxo'])
