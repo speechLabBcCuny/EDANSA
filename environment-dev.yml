@@ -1,0 +1,7 @@
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - mkdocs
+  - mkdocs-material

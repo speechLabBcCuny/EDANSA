@@ -1,0 +1,23 @@
+site_name: EDANSA Bioacoustics Model
+theme:
+  name: material
+
+markdown_extensions:
+  - admonition
+
+nav:
+  - "Overview": "index.md"
+  - "Using the Pre-trained Model":
+      - "Introduction": "using_pretrained_model/index.md"
+      - "Installation": "using_pretrained_model/installation.md"
+      - "Preparing Your Data": "using_pretrained_model/data_preparation.md"
+      - "Running the Model": "using_pretrained_model/running_inference.md"
+      - "Understanding Results": "using_pretrained_model/output_explanation.md"
+  - "Training a Custom Model":
+      - "Introduction": "training_custom_model/index.md"
+      - "Installation": "training_custom_model/installation.md"
+      - "Creating Your Dataset": "training_custom_model/dataset_creation.md"
+      - "Running Training": "training_custom_model/training_process.md"
+      - "Evaluating Your Model": "training_custom_model/model_evaluation.md"
+  - "Common Information":
+      - "Troubleshooting": "common/troubleshooting.md"
