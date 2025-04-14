@@ -146,7 +146,7 @@ setup(
         # 'PyYAML>=5',
         # 'torch==1.13.1',
         # 'torchaudio==0.12.1',
-        # 'pytorch-ignite==0.4.10',
+        'pytorch-ignite',
         # 'torchvision==0.13.1',
         # 'pydub==0.25.1',
         # 'scikit-learn==1.2.0',
