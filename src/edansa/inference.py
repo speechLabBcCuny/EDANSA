@@ -6,7 +6,7 @@ import random
 import time
 import glob
 import os
-from typing import Union, Tuple, Dict, List, Callable, Optional
+from typing import Union, Tuple, Dict, List, Callable, Optional, Sequence
 import re
 from datetime import datetime
 
@@ -434,13 +434,47 @@ def parse_start_time_from_filename(filename: str) -> Optional[datetime]:
 #%% Core functions
 
 
+def _log_failed_file_to_output_folder(audio_file_path,
+                                      error_msg,
+                                      output_folder,
+                                      input_data_root=None):
+    """
+    Logs a failed audio file and its error message to failed_files.log in the output folder.
+    Args:
+        audio_file_path: Path to the failed audio file (Path or str).
+        error_msg: String describing the reason for failure.
+        output_folder: Path to the output directory (str or Path).
+        input_data_root: Optional Path to input root for relative path calculation.
+    """
+    try:
+        output_folder = Path(output_folder)
+        output_folder.mkdir(parents=True, exist_ok=True)
+        log_path = output_folder / 'failed_files.log'
+        # Use relative path if possible
+        try:
+            if input_data_root is not None:
+                rel_path = Path(audio_file_path).resolve().relative_to(
+                    Path(input_data_root).resolve())
+            else:
+                rel_path = Path(audio_file_path)
+        except Exception:
+            rel_path = Path(audio_file_path)
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        log_line = f"{timestamp}\t{rel_path}\t{error_msg}\n"
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(log_line)
+    except Exception as log_err:
+        logging.warning(f"Failed to write to failed_files.log: {log_err}")
+
+
 def _process_single_audio_file(
     audio_file_path: Path,
     config: Dict,
     model_saved: torch.nn.Module,
     get_data_loader: Callable,
     args: argparse.Namespace,
-) -> Tuple[Union[pd.DataFrame, Dict[str, Union[Path, np.ndarray]], None], str]:
+) -> Tuple[Union[pd.DataFrame, Dict[str, np.ndarray], None], str,
+           Optional[str]]:
     """
     Processes a single audio file: loads, preprocesses, infers, and formats results.
 
@@ -452,12 +486,10 @@ def _process_single_audio_file(
         args: Command-line arguments.
 
     Returns:
-        A tuple containing:
-        - results: Either a pandas DataFrame (for predictions) or a dictionary
-                   (for embeddings) containing the inference results and relevant metadata.
-                   Returns None if processing fails at any critical step.
-        - result_type: A string indicating the type of result ('predictions' or 'embeddings').
-                       Returns an empty string if processing fails.
+        Tuple containing:
+            - results: Either a pandas DataFrame (for predictions) or a dictionary (for embeddings) containing the inference results and relevant metadata. Returns None if processing fails at any critical step.
+            - result_type: A string indicating the type of result ('predictions' or 'embeddings'). Returns an empty string if processing fails.
+            - error_msg: None if successful, otherwise a string describing the reason for failure.
     """
     audio_ins = None
     device = config['device']
@@ -469,8 +501,6 @@ def _process_single_audio_file(
 
     try:
         audio_ins = dataimport.Audio(str(audio_file_path))
-
-        # --- Load Stereo Audio as Tensor --- #
         try:
             stereo_data, sr = audio_ins.load_data(
                 mono=False,
@@ -484,22 +514,17 @@ def _process_single_audio_file(
                     f"load_data did not return a tensor for {audio_file_path.name}, type was {type(stereo_data)}. Converting."
                 )
                 stereo_data = torch.from_numpy(stereo_data).float()
-
             stereo_data = stereo_data.to(device)
-
         except Exception as load_err:
             logging.error(
                 f"Failed to load audio for {audio_file_path.name}: {load_err}")
-            return None, ""
-
-        # --- Calculate Clipping (if needed) --- #
+            return None, "", str(load_err)
         clipping_per_segment_tensor = None
         mean_clipping_per_excerpt_tensor = None
         if not args.skip_clipping_info:
             try:
                 clipping_per_segment_tensor = clippingutils.get_clipping_percent_file(
                     stereo_data, sr, excerpt_len, clipping_threshold).to(device)
-
                 if clipping_per_segment_tensor.numel() > 0:
                     if clipping_per_segment_tensor.ndim > 1:
                         mean_clipping_per_excerpt_tensor = torch.mean(
@@ -510,15 +535,12 @@ def _process_single_audio_file(
                     else:
                         mean_clipping_per_excerpt_tensor = torch.empty(
                             0, device=device)
-
             except Exception as clip_err:
                 logging.warning(
                     f"Could not calculate clipping for {audio_file_path.name}: {clip_err}. Proceeding without clipping info."
                 )
                 clipping_per_segment_tensor = None
                 mean_clipping_per_excerpt_tensor = None
-
-        # --- Select Inference Channel --- #
         try:
             mono_data_for_inference = _select_inference_channel(
                 stereo_data,
@@ -528,63 +550,43 @@ def _process_single_audio_file(
             logging.error(
                 f"Channel selection failed for {audio_file_path.name}: {chan_sel_err}. Skipping file."
             )
-            return None, ""
-
-        # --- Prepare DataLoader --- #
+            return None, "", str(chan_sel_err)
         try:
             dataloader = get_data_loader(mono_data_for_inference, config)
         except Exception as dl_err:
             logging.error(
                 f"Failed to create DataLoader for {audio_file_path.name}: {dl_err}"
             )
-            return None, ""
-
-        # --- Run Inference --- #
+            return None, "", str(dl_err)
         try:
             preds_tensor = single_file_inference(dataloader, config,
                                                  model_saved)
         except Exception as infer_err:
             logging.error(
                 f"Inference failed for {audio_file_path.name}: {infer_err}")
-            return None, ""
-
-        # --- Format Results --- #
+            return None, "", str(infer_err)
         try:
             num_excerpts = preds_tensor.shape[0]
             if num_excerpts == 0:
-                logging.warning(
-                    f"No excerpts generated for {audio_file_path.name}. Skipping file."
-                )
-                return None, ""
-
+                msg = f"No excerpts generated for {audio_file_path.name}. Skipping file."
+                logging.warning(msg)
+                return None, "", msg
             if result_type == 'embeddings':
-                # For embeddings, return the tensor and the path
-                # Extract embedding for the first excerpt
                 if num_excerpts > 1:
                     logging.warning(
                         f"Multiple ({num_excerpts}) embeddings generated for {audio_file_path.name}, using only the first one."
                     )
-                first_embedding_np = preds_tensor[0].cpu().numpy(
-                )  # Get first row, move to CPU, convert to numpy
-                embeddings_dict = {
-                    'audio_file_path': audio_file_path,
-                    'embeds': first_embedding_np
-                }
-                return embeddings_dict, result_type
-
+                first_embedding_np = preds_tensor[0].cpu().numpy()
+                embeddings_dict = {'embeds': first_embedding_np}
+                return embeddings_dict, result_type, None
             elif result_type == 'predictions':
                 target_taxo = config['target_taxo']
                 target_taxo_names = [
                     config['code2excell_names'][x] for x in target_taxo
                 ]
                 pred_col_names = ['pred_' + name for name in target_taxo_names]
-
-                # --- Create Timestamp Index (Handle missing/invalid start_date_time) ---
-                # Priority: 1. Filename parsing, 2. Metadata 'start_date_time', 3. Relative index
                 timestamps_pd = None
-                start_pd_timestamp = None  # Initialize
-
-                # 1. Attempt to parse from filename first
+                start_pd_timestamp = None
                 try:
                     filename_dt = parse_start_time_from_filename(
                         audio_file_path.name)
@@ -597,13 +599,8 @@ def _process_single_audio_file(
                     logging.warning(
                         f"Error parsing filename {audio_file_path.name} for timestamp: {fn_parse_err}"
                     )
-
-                # 2. If filename parsing failed or didn't yield a result, try metadata
-                # (Metadata fallback is now effectively removed as file_row is gone)
                 if start_pd_timestamp is None:
-                    pass  # Keep the outer 'if start_pd_timestamp is None:' structure
-
-                # 3. Generate index based on whether we found an absolute start time
+                    pass
                 if start_pd_timestamp:
                     try:
                         timestamps_pd = pd.date_range(
@@ -618,31 +615,21 @@ def _process_single_audio_file(
                         logging.warning(
                             f"Error creating date range for {audio_file_path.name} even with parsed start time {start_pd_timestamp}: {ts_err}. Falling back to relative time index."
                         )
-                        timestamps_pd = None  # Fallback to relative index
-
-                # 4. If absolute timestamp generation failed or no start time found, use relative index
+                        timestamps_pd = None
                 if timestamps_pd is None:
-                    if start_pd_timestamp is None:  # Log only if we never found a start time
+                    if start_pd_timestamp is None:
                         logging.warning(
                             f"Could not determine absolute start time for {audio_file_path.name} from filename or metadata. Using relative time index (float seconds from start)."
                         )
-                    # Create an index of float seconds from the start
                     relative_seconds = np.arange(num_excerpts) * excerpt_len
                     timestamps_pd = pd.Index(relative_seconds, dtype='float64')
-
-                # --- End Timestamp Index Creation ---
-
                 results_data = {}
                 preds_sig_tensor = sigmoid(preds_tensor)
                 preds_sig_np = preds_sig_tensor.cpu().numpy()
-
-                # Ensure preds_sig_np is 2D for consistent indexing, even with 1 class
                 if preds_sig_np.ndim == 1:
                     preds_sig_np = preds_sig_np.reshape(-1, 1)
-
                 for i, p_col in enumerate(pred_col_names):
                     results_data[p_col] = preds_sig_np[:, i]
-
                 if mean_clipping_per_excerpt_tensor is not None:
                     mean_clipping_np = mean_clipping_per_excerpt_tensor.cpu(
                     ).numpy()
@@ -655,75 +642,50 @@ def _process_single_audio_file(
                         results_data['clipping'] = np.full(num_excerpts, np.nan)
                 else:
                     results_data['clipping'] = np.full(num_excerpts, np.nan)
-
                 results_df = pd.DataFrame(results_data, index=timestamps_pd)
                 results_df.index.name = eio.TIMESTAMP_ARRAY_KEY
-                return results_df, result_type
-
+                return results_df, result_type, None
         except Exception as format_err:
             logging.error(
                 f"Failed to format results for {audio_file_path.name}: {format_err}"
             )
-            return None, ""
-
+            return None, "", str(format_err)
     except Exception as outer_err:
         logging.exception(
             f"Unexpected ERROR processing {audio_file_path.name}: {outer_err}")
-        return None, ""
+        return None, "", str(outer_err)
     finally:
         if audio_ins:
             audio_ins.unload_data()
+    # Fallback: should not be reached, but ensures all code paths return a tuple
+    return None, "", "Unknown error (unexpected code path)"
 
 
 def run_inference_on_dataframe(
-        file_paths: List[Union[str, Path]],  # Allow Path objects now
-        file_io: eio.IO,
-        config: Dict,
-        model_saved: torch.nn.Module,
-        get_data_loader: Callable,
-        args: argparse.Namespace,
-        input_data_root: Path,  # Add root path for relative path calculation
+    file_paths: Sequence[Union[str, Path]],
+    file_io: eio.IO,
+    config: Dict,
+    model_saved: torch.nn.Module,
+    get_data_loader: Callable,
+    args: argparse.Namespace,
+    input_data_root: Path,
 ):
-    """
-    Runs inference for each file specified in the list and saves results individually.
-
-    Args:
-        file_paths: List of audio file path strings or Path objects.
-        file_io: IO handler instance for saving results.
-        config: Configuration dictionary.
-        model_saved: Loaded model.
-        get_data_loader: Function to create a DataLoader.
-        args: Command-line arguments.
-        input_data_root: The root directory from which relative paths for output should be derived.
-    """
     logging.info(f"Processing {len(file_paths)} files...")
     processed_count = 0
     error_count = 0
-    skipped_count = 0  # Add counter for skipped files
-
+    skipped_count = 0
     if args.embeddings:
-        model_saved = replace_fc_layer(
-            model_saved)  # Prepare model for embeddings
-
-    for file_path in file_paths:  # Iterate over list (str or Path)
-        # Ensure it's a Path object for consistency within the loop
+        model_saved = replace_fc_layer(model_saved)
+    for file_path in file_paths:
         audio_file_path = Path(file_path)
-        logging.debug(
-            f"Considering: {audio_file_path.name}")  # Log file being considered
-
-        # --- Check if output file exists (Skip if it exists AND force_overwrite is False) --- #
-        if not args.force_overwrite:  # Only check if we are NOT forcing overwrite
+        logging.debug(f"Considering: {audio_file_path.name}")
+        if not args.force_overwrite:
             try:
                 result_type_for_check = 'embeddings' if args.embeddings else 'predictions'
-                # --- Use the IO method to get the expected path --- #
                 expected_output_path = file_io.get_expected_output_path(
                     result_type=result_type_for_check,
-                    audio_file_path=audio_file_path.resolve(
-                    ),  # Ensure absolute path
-                    input_data_root=input_data_root.resolve(
-                    )  # Ensure absolute path
-                )
-                # --- End Use the IO method --- #
+                    audio_file_path=audio_file_path.resolve(),
+                    input_data_root=input_data_root.resolve())
                 if expected_output_path.exists():
                     logging.info(
                         f"Skipping {audio_file_path.name} as output {expected_output_path} already exists."
@@ -733,17 +695,10 @@ def run_inference_on_dataframe(
                 logging.warning(
                     f"Error checking for existing output for {audio_file_path.name}, proceeding with inference: {check_err}"
                 )
-
-        # --- Process the file if not skipped ---
-        logging.debug(
-            f"Processing: {audio_file_path.name}")  # Log file being processed
-
-        results, result_type = _process_single_audio_file(
+        results, result_type, error_msg = _process_single_audio_file(
             audio_file_path, config, model_saved, get_data_loader, args)
-
-        if results is not None and result_type:
+        if results is not None and result_type and error_msg is None:
             try:
-                # Call the new save function in file_io
                 file_io.save_results_per_file(results, result_type,
                                               audio_file_path, input_data_root)
                 processed_count += 1
@@ -751,11 +706,16 @@ def run_inference_on_dataframe(
                 logging.error(
                     f"ERROR saving results for {audio_file_path.name}: {save_err}"
                 )
+                _log_failed_file_to_output_folder(
+                    audio_file_path, str(save_err), args.output_folder or
+                    file_io.output_folder, input_data_root)
                 error_count += 1
         else:
             # Error occurred during processing, already logged in _process_single_audio_file
+            _log_failed_file_to_output_folder(
+                audio_file_path, error_msg or "Unknown error",
+                args.output_folder or file_io.output_folder, input_data_root)
             error_count += 1
-
     logging.info(
         f"Finished processing. Success: {processed_count}, Errors: {error_count}, Skipped: {skipped_count}."
     )
@@ -872,7 +832,7 @@ def _find_audio_files(input_folder_path_str: str) -> List[Path]:
 
 
 def _determine_input_root(
-        file_paths: List[Union[str, Path]],  # Allow Path objects
+        file_paths: Sequence[Union[str, Path]],  # Allow Path objects
         input_list_path_str: Optional[str] = None,  # Made optional
         input_folder_path_str: Optional[str] = None) -> Path:
     """Determines the root directory for input files based on their common path."""
@@ -937,7 +897,7 @@ def main(args: argparse.Namespace, setup_fnc: Callable,
                              model_saved)  # config is updated in-place
 
     # 3. Read Input File List OR Find Files in Folder
-    file_paths: List[Union[str, Path]] = []
+    file_paths: Sequence[Union[str, Path]] = []
     input_data_root: Optional[Path] = None  # Initialize
 
     if args.input_folder:
