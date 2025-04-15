@@ -1,0 +1,28 @@
+name: edansa-env # You can change this environment name
+channels:
+  - pytorch # For pytorch, torchvision, torchaudio
+  - conda-forge # For many other scientific packages
+  - defaults
+dependencies:
+  # Python requirement (matches setup.py)
+  - python>=3.8,<3.12
+
+  # Core ML Dependencies (using conda names/channels)
+  - pytorch>=2.6,<3
+  - torchaudio>=2.6,<2.7
+  - torchvision>=0.21,<0.22
+  - pytorch-ignite>=0.5,<0.6
+
+  # Other Dependencies (assuming names match pip)
+  - pyyaml>=6.0,<7.0
+  - scikit-learn>=1.6,<1.7
+  - matplotlib>=3
+  - numpy>=2
+  - wandb>=0.19,<1
+  - tqdm>=4.67
+  - pandas>=2.2,<3.0
+  - pytest>=8.3,<9.0
+  - pytest-mock>=3.14,<4.0
+
+  # - pip:
+  #   - some-package-only-on-pypi

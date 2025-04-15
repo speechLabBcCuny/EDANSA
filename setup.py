@@ -2,9 +2,9 @@
 
 See:
 https://packaging.python.org/guides/distributing-packages-using-setuptools/
-https://github.com/pypa/sampleproject
+https://github.com/speechLabBcCuny/EDANSA
 """
-
+    
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
 import pathlib
@@ -13,6 +13,10 @@ here = pathlib.Path(__file__).parent.resolve()
 
 # Get the long description from the README file
 long_description = (here / 'README.md').read_text(encoding='utf-8')
+
+# Get requirements from requirements.txt
+with open(here / 'requirements.txt', encoding='utf-8') as f:
+    requirements = f.read().splitlines()
 
 # Arguments marked as "Required" below must be included for upload to PyPI.
 # Fields marked as "Optional" may be commented out.
@@ -37,12 +41,12 @@ setup(
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.0.1',  # Required
+    version='0.0.2',  # Required
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#summary
-    description='Megan experiments taxo',  # Optional
+    description='The Ecoacoustic Models and Dataset from Arctic North Slope Alaska',  # Optional
 
     # This is an optional longer description of your project that represents
     # the body of text which users will see when they visit PyPI.
@@ -70,15 +74,14 @@ setup(
     #
     # This field corresponds to the "Home-Page" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#home-page-optional
-    url='https://github.com/pypa/sampleproject',  # Optional
+    url='https://github.com/speechLabBcCuny/EDANSA',  # Optional
 
     # This should be your name or the name of the organization which owns the
     # project.
-    author='A. Random Developer',  # Optional
+    author='Enis Berk Coban',  # Optional
 
     # This should be a valid email address corresponding to the author listed
     # above.
-    author_email='author@example.com',  # Optional
 
     # Classifiers help users find your project by categorizing it.
     #
@@ -88,11 +91,13 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
 
         # Indicate who your project is intended for
-        'Intended Audience :: Developers',
-        'Topic :: Software Development :: Build Tools',
+        'Intended Audience :: Science/Research',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence',
+        'Topic :: Scientific/Engineering :: Audio Processing',
+        'Topic :: Scientific/Engineering :: Environmental Science',
 
         # Pick your license as you wish
         'License :: OSI Approved :: MIT License',
@@ -100,7 +105,7 @@ setup(
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate you support Python 3. These classifiers are *not*
         # checked by 'pip install'. See instead 'python_requires' below.
-        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3 :: Only',
     ],
 
@@ -110,7 +115,7 @@ setup(
     # Note that this is a list of additional keywords, separated
     # by commas, to be used to assist searching for the distribution in a
     # larger catalog.
-    keywords='sample, setuptools, development',  # Optional
+    keywords='ecological acoustics, ecoacoustics, acoustic models, audio processing, environmental science',  # Optional
 
     # When your source code is in a subdirectory under the project root, e.g.
     # `src/`, it is necessary to specify the `package_dir` argument.
@@ -131,7 +136,11 @@ setup(
     # 'Programming Language' classifiers above, 'pip install' will check this
     # and refuse to install the project if the version does not match. See
     # https://packaging.python.org/guides/distributing-packages-using-setuptools/#python-requires
-    python_requires='>=3.7, <4',
+    
+    # mostly constrained by torch and torchaudio
+    # torch 2.6.0 requires python 3.8-3.11
+    # https://pytorch.org/audio/2.6.0/installation.html#compatibility-matrix
+    python_requires='>=3.8, <3.12',
 
     # This field lists other packages that your project depends on to run.
     # Any package you put here will be installed by pip when your project is
@@ -142,19 +151,7 @@ setup(
 
     # if you like to know exact enviroment of the project, check the file:
     # conda_env_snapshot.yml
-    install_requires=[
-        'PyYAML>=5.4.1',
-        'torch==2.6.0',
-        'torchaudio==2.6.0',
-        'pytorch-ignite',
-        'torchvision==0.21',
-        'scikit-learn==1.6.1',
-        'matplotlib==3.10.1',
-        'numpy==2.2.2',
-        'wandb==0.19.9',
-        'tqdm==4.67.0',
-        'pandas==2.2.2',
-    ],  # Optional
+    install_requires=requirements,
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
@@ -202,10 +199,9 @@ setup(
     # issues, where the source is hosted, where to say thanks to the package
     # maintainers, and where to support the project financially. The key is
     # what's used to render the link text on PyPI.
-    #     project_urls={  # Optional
-    #         'Bug Reports': 'https://github.com/pypa/sampleproject/issues',
-    #         'Funding': 'https://donate.pypi.org',
-    #         'Say Thanks!': 'http://saythanks.io/to/example',
-    #         'Source': 'https://github.com/pypa/sampleproject/',
-    #     },
+    project_urls={  # Optional
+        'Bug Reports': 'https://github.com/speechLabBcCuny/EDANSA/issues',
+        'Source': 'https://github.com/speechLabBcCuny/EDANSA/',
+        'Documentation': 'https://speechLabBcCuny.github.io/EDANSA/',
+    },
 )
