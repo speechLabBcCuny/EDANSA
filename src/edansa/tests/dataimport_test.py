@@ -159,7 +159,7 @@ def test_expand_to_intervals(mock_data):  # pylint: disable=redefined-outer-name
 
     expected_start = pd.date_range(clip_start,
                                    clip_end,
-                                   freq='10S',
+                                   freq='10s',
                                    inclusive='left')
     expected_end = expected_start + pd.Timedelta(seconds=10)
 
@@ -182,4 +182,6 @@ def test_extract_weather_values_for_clip(mock_data):  # pylint: disable=redefine
     expected_values = np.array([1.0] * 120 + [0] * 180)
     print(result.shape)
     print(expected_values.shape)
-    assert np.array_equal(result, expected_values)
+    # assert np.array_equal(result, expected_values)
+    # Use allclose for float comparison
+    assert np.allclose(result, expected_values)

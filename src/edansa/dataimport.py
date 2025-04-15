@@ -180,7 +180,7 @@ class Audio():
         dtype: torch.dtype = torch.float32,
         store=True,
         resample_rate=-1,
-        backend='torch_soxio',
+        backend='sox',
         mono=False,
         normalize: bool = True,
         channels_first: bool = True,
@@ -758,7 +758,7 @@ class Dataset(MutableMapping):
                         value,
                         cached_dict,
                         dtype=dtype,
-                        backend='torch_soxio',
+                        backend='sox',
                         store=True,
                         resample_rate=resample_rate,
                         mono=mono,
@@ -793,7 +793,7 @@ class Dataset(MutableMapping):
                         value,
                         cached_dict,
                         dtype=dtype,
-                        backend='torch_soxio',
+                        backend='sox',
                         store=True,
                         resample_rate=resample_rate,
                         mono=mono,
@@ -1018,7 +1018,7 @@ class RecordingsDataset(TorchDataset):
                 audio.load_data(
                     store=True,
                     resample_rate=self.resample_rate,
-                    backend='torch_soxio',
+                    backend='sox',
                     mono=self.mono,
                     normalize=True,
                     channels_first=self.channels_first,
@@ -1143,10 +1143,11 @@ class RecordingsDataset(TorchDataset):
         end = min(row['end_date_time'], clip_end)
 
         intervals_start = pd.date_range(
-            start,  # type: ignore
-            end,  # type: ignore
-            freq=f'{excerpt_length}S',
-            inclusive='left')
+            start=start,
+            end=end,
+            freq=f"{excerpt_length}s",
+            inclusive="left",
+        )
         intervals_end = intervals_start + pd.Timedelta(seconds=excerpt_length)
 
         values = np.full(len(intervals_start), row[label])
@@ -1192,6 +1193,7 @@ class RecordingsDataset(TorchDataset):
 
         clip_rain_values = []
         for _, row in overlapping_weather.iterrows():
+            # Reverted unpacking to only keep rain_values
             _, _, rain_values = RecordingsDataset.expand_to_intervals(
                 row,
                 clip_start,
@@ -1371,7 +1373,7 @@ class RecordingsDatasetSSL(TorchDataset):
             audio.load_data(
                 store=True,
                 resample_rate=self.resample_rate,
-                backend='torch_soxio',
+                backend='sox',
                 mono=self.mono,
                 normalize=True,
                 channels_first=self.channels_first,

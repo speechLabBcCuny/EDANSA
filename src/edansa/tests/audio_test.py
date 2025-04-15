@@ -65,26 +65,26 @@ def setup_logging(debug_mode):
 
 @pytest.mark.parametrize("audio_file", TEST_FILES)
 def test_torchaudio_backend_consistency(audio_file, debug_mode):
-    """Compare audio loading between torch_soxio and torch_soundfile backends."""
+    """Compare audio loading between sox and soundfile backends."""
     logger.debug("Testing torchaudio backend consistency for file: %s",
                  audio_file)
 
-    # 1. Load with torch_soxio (normalized float32 tensor)
+    # 1. Load with sox (normalized float32 tensor)
     try:
         data_soxio, sr_soxio = audio.load(audio_file,
                                           dtype=torch.float32,
-                                          backend="torch_soxio",
+                                          backend="sox",
                                           normalize=True)
         logger.debug("Soxio loaded shape: %s, sr: %s, dtype: %s",
                      data_soxio.shape, sr_soxio, data_soxio.dtype)
     except Exception as e:
-        pytest.fail(f"Failed to load {audio_file} with torch_soxio: {e}")
+        pytest.fail(f"Failed to load {audio_file} with sox: {e}")
 
-    # 2. Load with torch_soundfile (normalized float32 tensor)
+    # 2. Load with soundfile (normalized float32 tensor)
     try:
         data_soundfile, sr_soundfile = audio.load(audio_file,
                                                   dtype=torch.float32,
-                                                  backend="torch_soundfile",
+                                                  backend="soundfile",
                                                   normalize=True)
         logger.debug("Soundfile loaded shape: %s, sr: %s, dtype: %s",
                      data_soundfile.shape, sr_soundfile, data_soundfile.dtype)
