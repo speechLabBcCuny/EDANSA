@@ -15,7 +15,7 @@ def load(
     filepath: Union[Path, str],
     dtype: Union[np.dtype, torch.dtype] = torch.float32,  # type: ignore
     resample_rate: int = -1,
-    backend: Optional[str] = 'sox',
+    backend: Optional[str] = None,
     mono=False,
     normalize: bool = True,
     channels_first: bool = True,

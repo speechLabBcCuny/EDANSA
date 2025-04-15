@@ -50,7 +50,7 @@ def test_get_clipping_percent_with_audio_file(audio_file):
     # Load audio with torchaudio backend
     sound_array, _ = audio.load(audio_file,
                                 dtype=torch.float32,
-                                backend="sox",
+                                backend=None,
                                 normalize=True)
 
     # Get clipping percentage directly with torch tensor
@@ -97,7 +97,7 @@ def test_get_clipping_percent_file_with_audio_file(audio_file, debug_mode):
     # Load audio with torchaudio backend
     sound_array, sr = audio.load(audio_file,
                                  dtype=torch.float32,
-                                 backend="sox",
+                                 backend=None,
                                  normalize=True)
 
     # Set segment length (in seconds)
@@ -169,11 +169,11 @@ def temp_output_dir():
 
 @pytest.mark.parametrize("audio_file", TEST_FILES)
 def test_run_task_save_with_backends(audio_file, temp_output_dir):
-    """Test run_task_save uses the default sox backend."""
+    """Test run_task_save uses the default ffmpeg backend."""
     # Generate a unique ID for each file to avoid overwriting results
     file_id = audio_file.stem
 
-    # Test with default (sox) backend
+    # Test with default (ffmpeg) backend
     results_dict_torch, errors_torch = clippingutils.run_task_save(
         [str(audio_file)],
         f"test_{file_id}_torch",
@@ -198,23 +198,23 @@ def test_run_task_save_with_backends(audio_file, temp_output_dir):
 
 @pytest.mark.parametrize("audio_file", WAV_TEST_FILES)
 def test_compare_dtypes_with_audio_file(audio_file, debug_mode):
-    """Test that clipping detection gives consistent results for different dtypes using sox.
+    """Test that clipping detection gives consistent results for different dtypes using ffmpeg.
 
     This test only runs on WAV files because loading unnormalized data might fail
     for other formats like FLAC with certain backends.
     """
     logger.debug("Testing file: %s", audio_file)
 
-    # Load the same audio file with different dtypes using sox
+    # Load the same audio file with different dtypes using ffmpeg
     sound_array_float, sr_float = audio.load(audio_file,
                                              dtype=torch.float32,
-                                             backend="sox",
+                                             backend=None,
                                              normalize=True)
 
     sound_array_int, sr_int = audio.load(
         audio_file,
         dtype=np.int16,  # Should use torch.int16 internally but return np
-        backend="sox",
+        backend=None,
         normalize=False)  # Load unnormalized int16
 
     assert sr_float == sr_int
@@ -467,7 +467,7 @@ def test_analyze_high_clipping_segments(debug_mode):
     # Load with torchaudio
     sound_array, sr = audio.load(audio_file,
                                  dtype=torch.float32,
-                                 backend="sox",
+                                 backend=None,
                                  normalize=True)
 
     # Convert to numpy for easier analysis

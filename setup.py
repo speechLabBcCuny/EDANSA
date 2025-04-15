@@ -154,7 +154,6 @@ setup(
         'wandb==0.19.9',
         'tqdm==4.67.0',
         'pandas==2.2.2',
-        'sox==1.5.0',
     ],  # Optional
 
     # List additional groups of dependencies here (e.g. development
