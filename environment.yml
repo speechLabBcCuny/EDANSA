@@ -1,4 +1,3 @@
-name: edansa-env # You can change this environment name
 channels:
   - pytorch # For pytorch, torchvision, torchaudio
   - conda-forge # For many other scientific packages
