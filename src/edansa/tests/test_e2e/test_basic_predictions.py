@@ -234,7 +234,7 @@ def test_inference_pipeline_single_file(
         if not pd.api.types.is_datetime64_any_dtype(df_generated['timestamp']):
             try:
                 df_generated['timestamp'] = pd.to_datetime(
-                    df_generated['timestamp'])
+                    df_generated['timestamp'], format='ISO8601')
             except (ValueError, TypeError):
                 # If auto-parse fails, try the default pandas format
                 logger.warning(

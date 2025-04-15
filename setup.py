@@ -150,10 +150,10 @@ setup(
         'torchvision==0.21',
         'scikit-learn==1.6.1',
         'matplotlib==3.10.1',
-        'numpy==1.26.1',
+        'numpy==2.2.2',
         'wandb==0.19.9',
         'tqdm==4.67.0',
-        'pandas==2.2.3',
+        'pandas==2.2.2',
         'sox==1.5.0',
     ],  # Optional
 
