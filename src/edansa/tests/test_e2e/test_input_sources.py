@@ -183,3 +183,206 @@ def test_inference_with_multi_file_list(tmp_path):
         ) > 0, f"Output file {expected_output_path} is empty."
 
     logger.info("Multi-file list test successful.")
+
+
+@pytest.mark.e2e
+def test_inference_with_corrupt_file(tmp_path):
+    """Test inference handling of a corrupted audio file."""
+    # --- Prepare Input File List with Corrupt File --- #
+    input_list_file = tmp_path / "corrupt_file_list.txt"
+    output_folder = tmp_path / "output_corrupt_test"
+    output_folder.mkdir()
+
+    # Path to the dummy corrupt file created earlier
+    corrupt_file_path = (ASSETS_DIR / "audio" / "dummy" / "corrupt" /
+                         "corrupt_dummy.wav").resolve()
+    if not corrupt_file_path.is_file():
+        pytest.fail(f"Dummy corrupt test file not found: {corrupt_file_path}")
+
+    with open(input_list_file, 'w') as f:
+        f.write(f"{str(corrupt_file_path)}\\n")
+    logger.debug(f"Created corrupt file input list: {input_list_file}")
+
+    # --- Determine Expected Input Root --- #
+    # The common root should be the directory containing the dummy file
+    expected_input_root = corrupt_file_path.parent.resolve()
+    logger.info(
+        f"Expected common input root for corrupt file: {expected_input_root}")
+
+    # --- Construct Command --- #
+    command = [
+        sys.executable,
+        "-m",
+        "runs.augment.inference",  # Assuming this is the entry point module
+        "--model_path",
+        str(MODEL_PT.resolve()),
+        "--config_file",
+        str(MODEL_CONFIG.resolve()),
+        "--input_files_list",  # Use input list arg
+        str(input_list_file.resolve()),
+        "--output_folder",
+        str(output_folder.resolve()),
+        "--channel_selection_method",
+        "average",  # Method doesn't matter much here, as loading should fail
+        "--device",
+        "cpu",
+    ]
+
+    # --- Run and Assert --- #
+    # We expect the script to run successfully (returncode 0) but log the error
+    logger.info(f"Running command for corrupt_file_test: {' '.join(command)}")
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        check=False,  # Don't raise exception on non-zero exit
+        timeout=600)
+
+    print(f"\\nSTDOUT (corrupt_file_test):\\n{result.stdout[-1000:]}")
+    print(f"STDERR (corrupt_file_test):\\n{result.stderr[-1000:]}")
+
+    # The script should complete without crashing
+    assert result.returncode == 0, f"Inference script failed unexpectedly for corrupt_file_test with return code {result.returncode}"
+    assert "Traceback" not in result.stderr, f"Traceback detected in stderr for corrupt_file_test"
+
+    # Verify failed_files.log exists and contains the corrupt file name
+    failed_log_path = output_folder / "failed_files.log"
+    assert failed_log_path.is_file(
+    ), f"Expected {failed_log_path} was not created."
+
+    with open(failed_log_path, 'r') as f:
+        log_content = f.read()
+
+    assert corrupt_file_path.name in log_content, \
+        f"Corrupt file '{corrupt_file_path.name}' not found in {failed_log_path}. Content:\\n{log_content}"
+
+    # Verify no predictions file was created for the corrupt file
+    expected_output_path = (
+        output_folder /
+        corrupt_file_path.relative_to(expected_input_root)).with_suffix(".csv")
+    assert not expected_output_path.exists(), \
+        f"Output file {expected_output_path} was unexpectedly created for corrupt input."
+
+    logger.info("Corrupt file handling test successful.")
+
+
+@pytest.mark.e2e
+def test_inference_with_zero_length_file(tmp_path):
+    """Test inference handling of a zero-length audio file."""
+    input_list_file = tmp_path / "zero_length_list.txt"
+    output_folder = tmp_path / "output_zero_length_test"
+    output_folder.mkdir()
+
+    zero_len_file_path = (ASSETS_DIR / "audio" / "dummy" / "error_cases" /
+                          "zero_length.wav").resolve()
+    if not zero_len_file_path.is_file():
+        pytest.fail(
+            f"Dummy zero-length test file not found: {zero_len_file_path}")
+
+    with open(input_list_file, 'w') as f:
+        f.write(f"{str(zero_len_file_path)}\n")
+
+    expected_input_root = zero_len_file_path.parent.resolve()
+
+    command = [
+        sys.executable,
+        "-m",
+        "runs.augment.inference",
+        "--model_path",
+        str(MODEL_PT.resolve()),
+        "--config_file",
+        str(MODEL_CONFIG.resolve()),
+        "--input_files_list",
+        str(input_list_file.resolve()),
+        "--output_folder",
+        str(output_folder.resolve()),
+        "--device",
+        "cpu",
+    ]
+
+    logger.info(f"Running command for zero_length_test: {' '.join(command)}")
+    result = subprocess.run(command,
+                            capture_output=True,
+                            text=True,
+                            check=False,
+                            timeout=600)
+
+    print(f"\nSTDOUT (zero_length_test):\n{result.stdout[-1000:]}")
+    print(f"STDERR (zero_length_test):\n{result.stderr[-1000:]}")
+
+    assert result.returncode == 0, f"Inference script failed unexpectedly for zero_length_test with return code {result.returncode}"
+    assert "Traceback" not in result.stderr, f"Traceback detected in stderr for zero_length_test"
+
+    failed_log_path = output_folder / "failed_files.log"
+    assert failed_log_path.is_file(
+    ), f"Expected {failed_log_path} was not created."
+    with open(failed_log_path, 'r') as f:
+        log_content = f.read()
+    assert zero_len_file_path.name in log_content, \
+        f"Zero-length file '{zero_len_file_path.name}' not found in {failed_log_path}. Content:\n{log_content}"
+
+    expected_output_path = (
+        output_folder /
+        zero_len_file_path.relative_to(expected_input_root)).with_suffix(".csv")
+    assert not expected_output_path.exists(), \
+        f"Output file {expected_output_path} was unexpectedly created for zero-length input."
+
+    logger.info("Zero-length file handling test successful.")
+
+
+@pytest.mark.e2e
+def test_inference_with_very_short_file(tmp_path):
+    """Test inference handling of a valid but very short audio file."""
+    input_list_file = tmp_path / "very_short_list.txt"
+    output_folder = tmp_path / "output_very_short_test"
+    output_folder.mkdir()
+
+    very_short_file_path = (ASSETS_DIR / "audio" / "dummy" / "error_cases" /
+                            "very_short.wav").resolve()
+    if not very_short_file_path.is_file():
+        pytest.fail(
+            f"Dummy very short test file not found: {very_short_file_path}")
+
+    with open(input_list_file, 'w') as f:
+        f.write(f"{str(very_short_file_path)}\n")
+
+    expected_input_root = very_short_file_path.parent.resolve()
+
+    command = [
+        sys.executable,
+        "-m",
+        "runs.augment.inference",
+        "--model_path",
+        str(MODEL_PT.resolve()),
+        "--config_file",
+        str(MODEL_CONFIG.resolve()),
+        "--input_files_list",
+        str(input_list_file.resolve()),
+        "--output_folder",
+        str(output_folder.resolve()),
+        "--device",
+        "cpu",
+    ]
+
+    logger.info(f"Running command for very_short_test: {' '.join(command)}")
+    result = _run_inference_command(
+        command, "very_short_test")  # Use helper that checks return code
+
+    # Verify NO failed_files.log was created (or is empty if created by prior tests in sequence)
+    failed_log_path = output_folder / "failed_files.log"
+    if failed_log_path.exists():
+        with open(failed_log_path, 'r') as f:
+            log_content = f.read()
+            assert very_short_file_path.name not in log_content, \
+                f"Very short file '{very_short_file_path.name}' was unexpectedly logged as failed in {failed_log_path}."
+
+    # Verify predictions file WAS created
+    expected_output_path = (
+        output_folder / very_short_file_path.relative_to(expected_input_root)
+    ).with_suffix(".csv")
+    assert expected_output_path.is_file(), \
+        f"Expected output file {expected_output_path} was not created for very short input."
+    assert os.path.getsize(expected_output_path) > 0, \
+        f"Output file {expected_output_path} is empty for very short input."
+
+    logger.info("Very short file handling test successful.")
