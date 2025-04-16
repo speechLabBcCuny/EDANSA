@@ -131,8 +131,8 @@ dmypy.json
 wandb/latest-run
 
 # Ignore downloaded test assets and the marker file
-src/edansa/tests/assets/audio/
-!src/edansa/tests/assets/audio/.gitkeep
-src/edansa/tests/assets/audio/.download_complete
+# src/edansa/tests/assets/audio/ # Removed - covered by rule below
+# !src/edansa/tests/assets/audio/.gitkeep # Removed - redundant
+# src/edansa/tests/assets/audio/.download_complete # Removed - old marker location
 MagicMock/mock.output_folder/*
 src/edansa/tests/assets/*

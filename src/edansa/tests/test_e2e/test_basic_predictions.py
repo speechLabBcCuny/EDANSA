@@ -109,6 +109,7 @@ def test_inference_pipeline_single_file(
     # --- 1. Prepare Input File List ---
     test_audio_path_rel_assets = Path(test_audio_path_rel_assets_str)
     # Construct absolute path to the test audio file inside the assets directory
+    # Reverted path adjustment - assuming extraction puts 'audio' directly under ASSETS_DIR
     test_audio_path_abs = (ASSETS_DIR / "audio" / "real" /
                            test_audio_path_rel_assets).resolve()
 

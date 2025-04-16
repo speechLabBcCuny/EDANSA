@@ -7,13 +7,13 @@ import sys
 import time  # Added for potential retry logic display
 
 # --- Configuration ---
-DATA_URL = "https://github.com/speechLabBcCuny/EDANSA/releases/download/dev-test-data-v1.0/edansa-test-audio-pack-v1.zip"
+DATA_URL = "https://github.com/speechLabBcCuny/EDANSA/releases/download/dev-test-data-v1.0/edansa-test-assets-pack-v1.zip"
 
 # Define the target directory relative to the script's location
 # Script is now in src/edansa/tests/, so project root is 3 levels up
 SCRIPT_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SCRIPT_DIR.parent.parent.parent  # Adjusted path
-TARGET_ASSET_DIR = PROJECT_ROOT / "src" / "edansa" / "tests" / "assets" / "audio"
+TARGET_ASSET_DIR = PROJECT_ROOT / "src" / "edansa" / "tests" / "assets"
 # A marker file to indicate successful download/extraction
 MARKER_FILE = TARGET_ASSET_DIR / ".download_complete"
 # --- End Configuration ---
