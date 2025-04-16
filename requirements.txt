@@ -11,3 +11,4 @@ tqdm>=4.67
 pandas>=2.2,<3.0
 pytest>=8.3,<9.0
 pytest-mock>=3.14,<4.0
+requests

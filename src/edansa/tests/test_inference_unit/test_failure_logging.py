@@ -8,6 +8,7 @@ import tempfile
 import logging
 from datetime import datetime
 import os
+import csv
 
 # Assuming the function is in src.edansa.inference
 # Adjust the import path based on your project structure
@@ -23,7 +24,7 @@ class TestFailureLogging(unittest.TestCase):
         """Create a temporary directory for test outputs."""
         self.test_dir = tempfile.TemporaryDirectory()
         self.output_folder = Path(self.test_dir.name)
-        self.log_file_path = self.output_folder / 'failed_files.log'
+        self.log_file_path = self.output_folder / 'failed_files.csv'
 
     def tearDown(self):
         """Clean up the temporary directory."""
@@ -52,8 +53,26 @@ class TestFailureLogging(unittest.TestCase):
         mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
         mock_open_func.assert_called_once_with(self.log_file_path,
                                                'a',
+                                               newline='',
                                                encoding='utf-8')
-        mock_open_func().write.assert_called_once_with(expected_log_line)
+        # Check that writerow was called correctly for header and data
+        # We access the mock_calls on the file handle mock
+        write_calls = mock_open_func().write.call_args_list
+        # Depending on how mock_open and csv.writer interact, write might be called
+        # with bytes or strings. We check for the data content.
+        # Note: csv.writer often adds CRLF (\r\n) line endings.
+        # Construct expected CSV rows (adjust quoting/newlines based on actual csv output)
+        expected_header_write = '"Timestamp","FilePath","ErrorMessage"\r\n'
+        expected_data_write = f'"{timestamp_str}","{audio_file}","{error_msg}"\r\n'
+
+        # Verify that write was called at least twice (header + data)
+        self.assertGreaterEqual(len(write_calls), 2)
+
+        # Verify the content of the calls (flexible check)
+        # Convert call args to string for easier comparison
+        call_args_str = [str(call[0][0]) for call in write_calls]
+        self.assertIn(expected_header_write, call_args_str)
+        self.assertIn(expected_data_write, call_args_str)
 
     @patch('edansa.inference.datetime')
     def test_log_file_appending(self, mock_datetime):
@@ -62,24 +81,33 @@ class TestFailureLogging(unittest.TestCase):
         mock_datetime.now.return_value = mock_now
         timestamp_str = mock_now.strftime('%Y-%m-%d %H:%M:%S')
 
-        # Create initial content
-        initial_content = " preexisting log entry\n"
-        with open(self.log_file_path, 'w', encoding='utf-8') as f:
-            f.write(initial_content)
+        # Create initial header and content for CSV
+        header = '"Timestamp","FilePath","ErrorMessage"\n'
+        initial_content_row = [
+            '2022-12-31 23:59:59', '/data/old_file.wav', 'Old error'
+        ]
+        with open(self.log_file_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+            writer.writerow(["Timestamp", "FilePath", "ErrorMessage"])
+            writer.writerow(initial_content_row)
 
         audio_file = Path('/data/audio/another_file.flac')
         error_msg = "Inference failed"
-        expected_log_line = f"{timestamp_str}\t{audio_file}\t{error_msg}\n"
+        expected_new_log_row = [timestamp_str, str(audio_file), error_msg]
 
         # Call the function
         _log_failed_file_to_output_folder(audio_file, error_msg,
                                           self.output_folder)
 
-        # Read file content and assert
-        with open(self.log_file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+        # Read file content and assert rows
+        with open(self.log_file_path, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            rows = list(reader)
 
-        self.assertEqual(content, initial_content + expected_log_line)
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[0], ["Timestamp", "FilePath", "ErrorMessage"])
+        self.assertEqual(rows[1], initial_content_row)
+        self.assertEqual(rows[2], expected_new_log_row)
 
     @patch('edansa.inference.datetime')
     def test_relative_path_calculation(self, mock_datetime):
@@ -95,16 +123,20 @@ class TestFailureLogging(unittest.TestCase):
             'site_a') / '20230101_120000.wav'  # Expected relative
         error_msg = "Clipping error"
 
-        expected_log_line = f"{timestamp_str}\t{audio_file_rel}\t{error_msg}\n"
+        expected_log_row = [timestamp_str, str(audio_file_rel), error_msg]
 
         # Call the function with input_data_root
         _log_failed_file_to_output_folder(audio_file_abs, error_msg,
                                           self.output_folder, input_root)
 
-        # Read file content and assert
-        with open(self.log_file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        self.assertEqual(content, expected_log_line)
+        # Read file content and assert rows
+        with open(self.log_file_path, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0], ["Timestamp", "FilePath", "ErrorMessage"])
+        self.assertEqual(rows[1], expected_log_row)
 
     @patch('edansa.inference.datetime')
     def test_absolute_path_fallback_no_root(self, mock_datetime):
@@ -115,7 +147,7 @@ class TestFailureLogging(unittest.TestCase):
 
         audio_file_abs = Path('/different/drive/data/file.mp3')
         error_msg = "Format error"
-        expected_log_line = f"{timestamp_str}\t{audio_file_abs}\t{error_msg}\n"
+        expected_log_row = [timestamp_str, str(audio_file_abs), error_msg]
 
         # Call the function without input_data_root
         _log_failed_file_to_output_folder(audio_file_abs, error_msg,
@@ -123,9 +155,12 @@ class TestFailureLogging(unittest.TestCase):
                                           None)  # Explicitly None
 
         # Read file content and assert
-        with open(self.log_file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        self.assertEqual(content, expected_log_line)
+        with open(self.log_file_path, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0], ["Timestamp", "FilePath", "ErrorMessage"])
+        self.assertEqual(rows[1], expected_log_row)
 
     @patch('edansa.inference.datetime')
     def test_absolute_path_fallback_relative_error(self, mock_datetime):
@@ -149,10 +184,13 @@ class TestFailureLogging(unittest.TestCase):
                                               self.output_folder, input_root)
 
         # Assert that the original absolute path was logged
-        expected_log_line = f"{timestamp_str}\t{audio_file_abs}\t{error_msg}\n"
-        with open(self.log_file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        self.assertEqual(content, expected_log_line)
+        expected_log_row = [timestamp_str, str(audio_file_abs), error_msg]
+        with open(self.log_file_path, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0], ["Timestamp", "FilePath", "ErrorMessage"])
+        self.assertEqual(rows[1], expected_log_row)
 
     @patch('builtins.open', new_callable=mock_open)
     @patch('logging.warning')
@@ -177,9 +215,9 @@ class TestFailureLogging(unittest.TestCase):
 
         # Assert that logging.warning was called
         mock_log_warning.assert_called_once()
-        # Check that the warning message contains the exception details
+        # Check that the warning message contains the exception details and correct filename
         call_args, _ = mock_log_warning.call_args
-        self.assertIn("Failed to write to failed_files.log", call_args[0])
+        self.assertIn("Failed to write to failed_files.csv", call_args[0])
         # Check the content of the first argument for the error string
         self.assertIn("Disk full simulation", call_args[0])
 

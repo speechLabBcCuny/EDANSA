@@ -19,9 +19,9 @@ clipping_np_stereo_ch1_less = np.array([[0.5, 0.1], [0.6, 0.2]],
                                        dtype=np.float32)
 clipping_np_mono = np.array([[0.1], [0.2]], dtype=np.float32)  # Shape (2, 1)
 
-# Define dummy sr and excerpt_len for tests needing them
-DUMMY_SR_TEST = 1000
-DUMMY_EXCERPT_LEN_TEST = 2
+# Define constants for dummy values if not already defined globally in the test file
+DUMMY_SR_TEST = 16000
+DUMMY_EXCERPT_LEN_TEST = 10
 
 
 class TestSelectInferenceChannel:
@@ -163,6 +163,7 @@ class TestSelectInferenceChannel:
     @pytest.mark.parametrize("data", [stereo_np, stereo_torch])
     def test_clipping_method_missing_data(self, data, caplog):
         """Test warning and fallback when clipping data is missing."""
+        caplog.set_level(logging.WARNING)  # Explicitly set level for this test
         if isinstance(data, np.ndarray):
             data = torch.from_numpy(data)  # Convert numpy to tensor
 
@@ -176,13 +177,13 @@ class TestSelectInferenceChannel:
             sr=DUMMY_SR_TEST,
             excerpt_len=DUMMY_EXCERPT_LEN_TEST)
         assert torch.allclose(result, expected)
-        assert "Clipping method requested" in caplog.text
-        assert "no clipping data provided" in caplog.text
-        assert "Falling back to 'average'" in caplog.text
+        # Assert based on the ACTUAL warning message from the code
+        assert f"Clipping method requested for file 'test_file_missing' but no clipping data provided. Falling back to 'average' method." in caplog.text
 
     @pytest.mark.parametrize("data", [stereo_np, stereo_torch])
     def test_clipping_method_mismatched_channels(self, data, caplog):
         """Test warning and fallback when clipping channels mismatch audio."""
+        caplog.set_level(logging.WARNING)  # Explicitly set level for this test
         if isinstance(data, np.ndarray):
             data = torch.from_numpy(data)  # Convert numpy to tensor
         # Use mono clipping data for mismatch
@@ -198,9 +199,9 @@ class TestSelectInferenceChannel:
             sr=DUMMY_SR_TEST,
             excerpt_len=DUMMY_EXCERPT_LEN_TEST)
         assert torch.allclose(result, expected)
-        assert "Clipping method requested" in caplog.text
-        assert "clipping data dimensions mismatch" in caplog.text
-        assert "Falling back to 'average'" in caplog.text
+        # Assert based on the ACTUAL warning message from the code
+        assert f"Clipping method requested for file 'test_file_mismatch' but clipping data dimensions mismatch audio channels" in caplog.text
+        assert f"Falling back to 'average' method." in caplog.text
 
     @pytest.mark.parametrize("data", [stereo_np, stereo_torch])
     def test_unknown_method(self, data):
@@ -230,18 +231,19 @@ class TestSelectInferenceChannel:
                 excerpt_len=DUMMY_EXCERPT_LEN_TEST)
 
     def test_invalid_dimensions_np(self):
-        """Test ValueError for numpy array with invalid dimensions."""
-        data_3d = np.random.rand(2, 2, 10).astype(np.float32)
-        # Convert numpy to tensor before calling
-        data_3d_tensor = torch.from_numpy(data_3d)
+        """Test ValueError on numpy array with incorrect dimensions."""
+        # Create a 3D numpy array which is invalid for the function
+        invalid_data_np = np.random.rand(2, 2, 10).astype(np.float32)
+        invalid_data_torch = torch.from_numpy(
+            invalid_data_np)  # Convert to tensor
         with pytest.raises(ValueError, match="Unsupported tensor dimension: 3"):
             inference._select_inference_channel(
-                data_3d_tensor,
+                invalid_data_torch,  # Pass tensor
                 'average',
                 None,
-                'test_file',
-                sr=DUMMY_SR_TEST,
-                excerpt_len=DUMMY_EXCERPT_LEN_TEST)
+                'test_invalid_dim_np',
+                DUMMY_SR_TEST,
+                DUMMY_EXCERPT_LEN_TEST)
 
     def test_invalid_dimensions_torch(self):
         """Test ValueError for tensor with invalid dimensions."""
@@ -272,6 +274,7 @@ class TestSelectInferenceChannel:
     @pytest.mark.parametrize("data", [stereo_np, stereo_torch])
     def test_clipping_method_fallback_on_missing_data(self, data, caplog):
         """Test 'clipping' method falls back to average when clipping data is None."""
+        caplog.set_level(logging.WARNING)  # Explicitly set level for this test
         if isinstance(data, np.ndarray):
             data = torch.from_numpy(data)  # Convert numpy to tensor
         # The function should now succeed and return the average, not raise ValueError
@@ -283,14 +286,14 @@ class TestSelectInferenceChannel:
             sr=DUMMY_SR_TEST,
             excerpt_len=DUMMY_EXCERPT_LEN_TEST)
         assert torch.allclose(result, torch.mean(data.float(), dim=0))
-        assert "Clipping method requested" in caplog.text
-        assert "no clipping data provided" in caplog.text
-        assert "Falling back to 'average'" in caplog.text
+        # Assert based on the ACTUAL warning message from the code
+        assert f"Clipping method requested for file 'test_file_fallback' but no clipping data provided. Falling back to 'average' method." in caplog.text
 
     @pytest.mark.parametrize("data", [stereo_np, stereo_torch])
     def test_clipping_method_fallback_on_mismatched_channels(
             self, data, caplog):
         """Test 'clipping' method falls back to average when channels mismatch."""
+        caplog.set_level(logging.WARNING)  # Explicitly set level for this test
         if isinstance(data, np.ndarray):
             data = torch.from_numpy(data)  # Convert numpy to tensor
         # Use mono clipping data for mismatch
@@ -303,6 +306,6 @@ class TestSelectInferenceChannel:
             sr=DUMMY_SR_TEST,
             excerpt_len=DUMMY_EXCERPT_LEN_TEST)
         assert torch.allclose(result, torch.mean(data.float(), dim=0))
-        assert "Clipping method requested" in caplog.text
-        assert "clipping data dimensions mismatch" in caplog.text
-        assert "Falling back to 'average'" in caplog.text
+        # Assert based on the ACTUAL warning message from the code
+        assert f"Clipping method requested for file 'test_file_fallback2' but clipping data dimensions mismatch audio channels" in caplog.text
+        assert f"Falling back to 'average' method." in caplog.text

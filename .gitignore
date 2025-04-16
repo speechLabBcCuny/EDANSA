@@ -128,5 +128,11 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .vscode/settings.json
-src/*/tests/assets/*
 wandb/latest-run
+
+# Ignore downloaded test assets and the marker file
+src/edansa/tests/assets/audio/
+!src/edansa/tests/assets/audio/.gitkeep
+src/edansa/tests/assets/audio/.download_complete
+MagicMock/mock.output_folder/*
+src/edansa/tests/assets/*

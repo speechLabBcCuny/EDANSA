@@ -24,6 +24,7 @@ dependencies:
   - pytest-mock>=3.14,<4.0
   # ffmpeg is required for torchaudio
   - ffmpeg<7.0
+  - requests
 
   # - pip:
   #   - some-package-only-on-pypi

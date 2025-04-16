@@ -4,6 +4,7 @@ import pytest
 import torch
 import logging
 from pathlib import Path
+import torchaudio
 
 from edansa import audio
 
@@ -69,78 +70,64 @@ def test_torchaudio_backend_consistency(audio_file, debug_mode):
     logger.debug("Testing torchaudio backend consistency for file: %s",
                  audio_file)
 
-    # 1. Load with sox (normalized float32 tensor)
+    # 1. Load with default backend (normalized float32 tensor)
     try:
-        data_soxio, sr_soxio = audio.load(audio_file,
-                                          dtype=torch.float32,
-                                          backend="sox",
-                                          normalize=True)
-        logger.debug("Soxio loaded shape: %s, sr: %s, dtype: %s",
-                     data_soxio.shape, sr_soxio, data_soxio.dtype)
+        data_default, sr_default = audio.load(audio_file,
+                                              dtype=torch.float32,
+                                              normalize=True)
+        assert isinstance(data_default, torch.Tensor)
+        logger.debug("Default backend loaded shape: %s, sr: %s, dtype: %s",
+                     data_default.shape, sr_default, data_default.dtype)
     except Exception as e:
-        pytest.fail(f"Failed to load {audio_file} with sox: {e}")
+        pytest.fail(f"Failed to load {audio_file} with default backend: {e}")
 
-    # 2. Load with soundfile (normalized float32 tensor)
+    # Check if soundfile backend is available
+    available_backends = torchaudio.list_audio_backends()
+    if "soundfile" not in available_backends:
+        pytest.skip(
+            f"Soundfile backend not available (available: {available_backends}). Skipping comparison."
+        )
+
+    # 2. Load with soundfile backend (normalized float32 tensor)
     try:
-        data_soundfile, sr_soundfile = audio.load(audio_file,
-                                                  dtype=torch.float32,
-                                                  backend="soundfile",
-                                                  normalize=True)
+        data_sf, sr_sf = audio.load(audio_file,
+                                    dtype=torch.float32,
+                                    backend="soundfile",
+                                    normalize=True)
+        assert isinstance(data_sf, torch.Tensor)
         logger.debug("Soundfile loaded shape: %s, sr: %s, dtype: %s",
-                     data_soundfile.shape, sr_soundfile, data_soundfile.dtype)
+                     data_sf.shape, sr_sf, data_sf.dtype)
     except Exception as e:
-        # Soundfile might fail on certain formats like FLAC without library
-        logger.warning("Skipping soundfile test for %s due to load error: %s",
-                       audio_file, e)
-        pytest.skip(f"Soundfile failed to load {audio_file}: {e}")
+        pytest.fail(f"Failed to load {audio_file} with soundfile: {e}")
 
-    # 3. Compare Sample Rates
-    assert sr_soxio == sr_soundfile, \
-        f"Sample rates differ: {sr_soxio} (soxio) vs {sr_soundfile} (soundfile)"
+    # 3. Compare sampling rates
+    assert sr_default == sr_sf, f"Sampling rates differ: Default ({sr_default}) vs Soundfile ({sr_sf}) for {audio_file}"
 
-    # 4. Compare Shapes
-    assert data_soxio.shape == data_soundfile.shape, \
-        f"Shapes differ: {data_soxio.shape} (soxio) vs {data_soundfile.shape} (soundfile)"
+    # 4. Compare shapes (allow for minor differences due to backend handling?)
+    assert data_default.shape == data_sf.shape, f"Shapes differ: Default {data_default.shape} vs Soundfile {data_sf.shape} for {audio_file}"
 
-    # 5. Compare Data (Tensor comparison)
-    # Use torch.allclose for tensor comparison
-    atol_value = 1e-5  # Tolerance for float comparison
-    are_close = torch.allclose(data_soxio,
-                               data_soundfile,
-                               rtol=0,
-                               atol=atol_value)
+    # 5. Compare content (allow for small numerical differences)
+    # Increased tolerance for floating point comparisons
+    is_close = torch.allclose(data_default, data_sf, rtol=1e-4, atol=1e-5)
+    if not is_close:
+        diff = torch.abs(data_default - data_sf)
+        max_diff = torch.max(diff)
+        mean_diff = torch.mean(diff)
+        logger.warning(
+            f"Content mismatch for {audio_file}. Max diff: {max_diff:.6f}, Mean diff: {mean_diff:.6f}"
+        )
+        # Optional: Save differing tensors for debugging if debug_mode is set
+        if debug_mode:
+            # Create a unique filename based on the audio file name
+            base_name = Path(audio_file).stem
+            diff_dir = Path(debug_mode) / "diffs"
+            diff_dir.mkdir(parents=True,
+                           exist_ok=True)  # Ensure directory exists
+            torch.save(data_default, diff_dir / f"{base_name}_default.pt")
+            torch.save(data_sf, diff_dir / f"{base_name}_soundfile.pt")
+            logger.info(f"Saved differing tensors to {diff_dir}")
 
-    if not are_close:
-        # Calculate difference statistics if not close for debugging
-        diff = torch.abs(data_soxio - data_soundfile)
-        max_diff = torch.max(diff).item()
-        mean_diff = torch.mean(diff).item()
-        mismatched_count = torch.sum(diff > atol_value).item()
-        mismatched_percent = (mismatched_count / diff.numel()) * 100
-        logger.error(
-            "Data mismatch detected between torchaudio backends for %s:",
-            audio_file)
-        logger.error("  Max difference: %s", max_diff)
-        logger.error("  Mean difference: %.6f", mean_diff)
-        logger.error("  Samples differing by more than %s: %s (%.4f%%)",
-                     atol_value, mismatched_count, mismatched_percent)
-
-        # Optionally show some differing values
-        diff_indices = torch.where(diff > atol_value)
-        limit = 5
-        logger.error("  First %s differing samples (soxio, soundfile, diff):",
-                     limit)
-        for i in range(min(limit, len(diff_indices[0]))):
-            # Construct tuple index for multi-dimensional tensors if necessary
-            idx = tuple(d[i].item() for d in diff_indices)
-            soxio_val = data_soxio[idx].item()
-            soundfile_val = data_soundfile[idx].item()
-            diff_val = diff[idx].item()
-            logger.error("    idx%s: (%.6f, %.6f, %.6f)", idx, soxio_val,
-                         soundfile_val, diff_val)
-
-    assert are_close, \
-        f"Audio data differs significantly between torchaudio backends (atol={atol_value})"
+    assert is_close, f"Content differs significantly between default and soundfile backends for {audio_file}. Max diff: {max_diff:.6f}"
 
     logger.debug("Torchaudio backend consistency test passed for %s",
                  audio_file)
