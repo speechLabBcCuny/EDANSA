@@ -6,6 +6,7 @@ import os
 import logging
 import shutil
 import time
+import csv
 
 # Import shared data from test_data.py
 from .test_data import (ASSETS_DIR, MODEL_PT, MODEL_CONFIG, AUDIO_TEST_CASES)
@@ -200,7 +201,7 @@ def test_inference_with_corrupt_file(tmp_path):
         pytest.fail(f"Dummy corrupt test file not found: {corrupt_file_path}")
 
     with open(input_list_file, 'w') as f:
-        f.write(f"{str(corrupt_file_path)}\\n")
+        f.write(f"{str(corrupt_file_path)}\n")
     logger.debug(f"Created corrupt file input list: {input_list_file}")
 
     # --- Determine Expected Input Root --- #
@@ -238,23 +239,42 @@ def test_inference_with_corrupt_file(tmp_path):
         check=False,  # Don't raise exception on non-zero exit
         timeout=600)
 
-    print(f"\\nSTDOUT (corrupt_file_test):\\n{result.stdout[-1000:]}")
-    print(f"STDERR (corrupt_file_test):\\n{result.stderr[-1000:]}")
+    print(f"\nSTDOUT (corrupt_file_test):\n{result.stdout[-1000:]}")
+    print(f"STDERR (corrupt_file_test):\n{result.stderr[-1000:]}")
 
     # The script should complete without crashing
     assert result.returncode == 0, f"Inference script failed unexpectedly for corrupt_file_test with return code {result.returncode}"
     assert "Traceback" not in result.stderr, f"Traceback detected in stderr for corrupt_file_test"
 
-    # Verify failed_files.log exists and contains the corrupt file name
-    failed_log_path = output_folder / "failed_files.log"
+    # Verify failed_files.csv exists and contains the corrupt file name
+    failed_log_path = output_folder / "failed_files.csv"
     assert failed_log_path.is_file(
     ), f"Expected {failed_log_path} was not created."
 
-    with open(failed_log_path, 'r') as f:
-        log_content = f.read()
+    found_entry = False
+    header_correct = False
+    expected_header = ["Timestamp", "FilePath", "ErrorMessage"]
 
-    assert corrupt_file_path.name in log_content, \
-        f"Corrupt file '{corrupt_file_path.name}' not found in {failed_log_path}. Content:\\n{log_content}"
+    with open(failed_log_path, 'r', newline='', encoding='utf-8'
+             ) as f:  # This block remains for the actual test logic
+        reader = csv.reader(f)
+        try:
+            header = next(reader)
+            if header == expected_header:
+                header_correct = True
+            for row in reader:
+                # Expecting 3 columns: Timestamp, FilePath, ErrorMessage
+                if len(row) == 3 and Path(
+                        row[1]).name == corrupt_file_path.name:
+                    found_entry = True
+                    break
+        except StopIteration:
+            # File might be empty or only contain header, which is an error state here
+            pass
+
+    assert header_correct, f"CSV header in {failed_log_path} is missing or incorrect. Expected: {expected_header}"
+    assert found_entry, \
+        f"Corrupt file '{corrupt_file_path.name}' not found in FilePath column of {failed_log_path}."
 
     # Verify no predictions file was created for the corrupt file
     expected_output_path = (
@@ -313,13 +333,30 @@ def test_inference_with_zero_length_file(tmp_path):
     assert result.returncode == 0, f"Inference script failed unexpectedly for zero_length_test with return code {result.returncode}"
     assert "Traceback" not in result.stderr, f"Traceback detected in stderr for zero_length_test"
 
-    failed_log_path = output_folder / "failed_files.log"
+    failed_log_path = output_folder / "failed_files.csv"
     assert failed_log_path.is_file(
     ), f"Expected {failed_log_path} was not created."
-    with open(failed_log_path, 'r') as f:
-        log_content = f.read()
-    assert zero_len_file_path.name in log_content, \
-        f"Zero-length file '{zero_len_file_path.name}' not found in {failed_log_path}. Content:\n{log_content}"
+
+    found_entry = False
+    header_correct = False
+    expected_header = ["Timestamp", "FilePath", "ErrorMessage"]
+    with open(failed_log_path, 'r', newline='', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        try:
+            header = next(reader)
+            if header == expected_header:
+                header_correct = True
+            for row in reader:
+                if len(row) == 3 and Path(
+                        row[1]).name == zero_len_file_path.name:
+                    found_entry = True
+                    break
+        except StopIteration:
+            pass  # File might be empty or only contain header
+
+    assert header_correct, f"CSV header in {failed_log_path} is missing or incorrect. Expected: {expected_header}"
+    assert found_entry, \
+        f"Zero-length file '{zero_len_file_path.name}' not found in FilePath column of {failed_log_path}."
 
     expected_output_path = (
         output_folder /
@@ -368,13 +405,23 @@ def test_inference_with_very_short_file(tmp_path):
     result = _run_inference_command(
         command, "very_short_test")  # Use helper that checks return code
 
-    # Verify NO failed_files.log was created (or is empty if created by prior tests in sequence)
-    failed_log_path = output_folder / "failed_files.log"
+    # Verify NO failed_files.csv was created (or doesn't contain the entry if created by prior tests)
+    failed_log_path = output_folder / "failed_files.csv"
     if failed_log_path.exists():
-        with open(failed_log_path, 'r') as f:
-            log_content = f.read()
-            assert very_short_file_path.name not in log_content, \
-                f"Very short file '{very_short_file_path.name}' was unexpectedly logged as failed in {failed_log_path}."
+        found_entry = False
+        with open(failed_log_path, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            try:
+                next(reader)
+                for row in reader:
+                    if len(row) >= 2 and Path(
+                            row[1]).name == very_short_file_path.name:
+                        found_entry = True
+                        break
+            except StopIteration:
+                pass
+        assert not found_entry, \
+             f"Very short file '{very_short_file_path.name}' was unexpectedly logged as failed in {failed_log_path}."
 
     # Verify predictions file WAS created
     expected_output_path = (

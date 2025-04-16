@@ -9,6 +9,7 @@ import os
 from typing import Union, Tuple, Dict, List, Callable, Optional, Sequence
 import re
 from datetime import datetime
+import csv
 
 import numpy as np
 import pandas as pd
@@ -434,22 +435,26 @@ def parse_start_time_from_filename(filename: str) -> Optional[datetime]:
 #%% Core functions
 
 
-def _log_failed_file_to_output_folder(audio_file_path,
-                                      error_msg,
-                                      output_folder,
-                                      input_data_root=None):
+def _log_failed_file_to_output_folder(
+        audio_file_path,
+        error_msg,
+        output_folder,
+        input_data_root=None,
+        log_filename="failed_files.csv"):  # Use .csv extension
     """
-    Logs a failed audio file and its error message to failed_files.log in the output folder.
+    Logs a failed audio file and its error message to a CSV file in the output folder. # Updated docstring
     Args:
         audio_file_path: Path to the failed audio file (Path or str).
         error_msg: String describing the reason for failure.
         output_folder: Path to the output directory (str or Path).
         input_data_root: Optional Path to input root for relative path calculation.
+        log_filename: The filename for the log file. # Added docstring for new param
     """
     try:
         output_folder = Path(output_folder)
         output_folder.mkdir(parents=True, exist_ok=True)
-        log_path = output_folder / 'failed_files.log'
+        log_path = output_folder / log_filename  # Use parameter
+
         # Use relative path if possible
         try:
             if input_data_root is not None:
@@ -459,12 +464,24 @@ def _log_failed_file_to_output_folder(audio_file_path,
                 rel_path = Path(audio_file_path)
         except Exception:
             rel_path = Path(audio_file_path)
+
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        log_line = f"{timestamp}\t{rel_path}\t{error_msg}\n"
-        with open(log_path, 'a', encoding='utf-8') as f:
-            f.write(log_line)
+        log_data = [timestamp, str(rel_path), error_msg]  # Prepare data row
+
+        # Check if header needs to be written
+        write_header = not log_path.exists() or log_path.stat().st_size == 0
+
+        # Use csv writer for robust quoting
+        with open(log_path, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f, quoting=csv.QUOTE_ALL)  # Quote all fields
+            if write_header:
+                writer.writerow(["Timestamp", "FilePath",
+                                 "ErrorMessage"])  # Write header
+            writer.writerow(log_data)  # Write data row
+
     except Exception as log_err:
-        logging.warning(f"Failed to write to failed_files.log: {log_err}")
+        # Use the specific log filename in the warning message
+        logging.warning(f"Failed to write to {log_filename}: {log_err}")
 
 
 def _process_single_audio_file(
