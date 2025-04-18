@@ -86,7 +86,7 @@ This page lists common issues encountered when installing or running the EDANSA 
 
 *   **Symptom:** The `timestamp` column in the output CSV shows `0.0`, `10.0`, `20.0`, etc., instead of dates and times.
 *   **Cause:** The input audio filenames did not match the expected `recorderid_YYYYMMDD_HHMMSS` or `YYYYMMDD_HHMMSS` format.
-*   **Solution:** This is expected behavior if filenames aren't parsable. If you need absolute timestamps, rename your input files according to the convention described in the [Providing Audio Data](./using_pretrained_model/providing_audio_data.md#recommended-timestamp-formats-in-filename) section *before* running inference.
+*   **Solution:** This is expected behavior if filenames aren't parsable. If you need absolute timestamps, rename your input files according to the convention described in the [Providing Audio Data](../using_pretrained_model/providing_audio_data.md#recommended-timestamp-formats-in-filename) section *before* running inference.
 
 ### Low Confidence Scores / Poor Performance
 
