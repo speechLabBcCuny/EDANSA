@@ -91,7 +91,13 @@ If you prefer not to use Conda, you can use `pip` with a virtual environment. Th
 `torchaudio`, the library used for loading audio files, requires an external backend library to perform the actual decoding. Supported backends include FFmpeg (recommended, cross-platform), SoX (Linux/macOS), and SoundFile. [\[torchaudio Backends Documentation\]](https://pytorch.org/audio/stable/torchaudio.html#backend)
 
 *   **Conda Users:** The provided `environment.yml` file includes `ffmpeg`. This backend should be installed automatically when you create the environment.
-*   **Pip Users:** If you install dependencies using `pip` (Method 2), you might need to install `ffmpeg` or another backend (`libsndfile` for SoundFile, `sox`) separately using your system's package manager (e.g., `apt`, `brew`, `yum`) if it's not already present on your system.
+*   **Pip Users:** If you install dependencies using `pip` (Method 2), you might need to install `ffmpeg` or another backend (`libsndfile` for SoundFile, `sox`) separately.
+    *   **Linux/macOS:** Use your system's package manager (e.g., `sudo apt update && sudo apt install ffmpeg`, `brew install ffmpeg`, `sudo yum install ffmpeg`).
+    *   **Windows:**
+        *   **Using a Package Manager:** If you use a Windows package manager like [Chocolatey](https://chocolatey.org/) or [Scoop](https://scoop.sh/), you can typically install FFmpeg with:
+            *   Chocolatey: `choco install ffmpeg`
+            *   Scoop: `scoop install ffmpeg`
+        *   **Manual Installation:** If you don't use a package manager, you can download the `ffmpeg` shared build for Windows from the [official ffmpeg website](https://ffmpeg.org/download.html#build-windows). Extract the archive and add the `bin` directory (containing `ffmpeg.exe`, `ffprobe.exe`, etc.) to your system's `PATH` environment variable. You may need to restart your terminal or computer for the `PATH` change to take effect.
 
 *   **Checking Available Backends:** Once you have installed dependencies and activated your environment (e.g., `<your_env_name>`), you can check which backends `torchaudio` can detect by running the following Python command:
 
