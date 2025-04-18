@@ -2,6 +2,7 @@
 
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://speechlabbccuny.github.io/EDANSA/) <!-- Placeholder for actual URL -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/speechLabBcCuny/EDANSA/blob/main/notebooks/edansa_inference_example.ipynb)
 
 This repository provides pre-trained models for detecting bioacoustic events and specific bird species in Passive Acoustic Monitoring (PAM) data, developed as part of the EDANSA project.
 

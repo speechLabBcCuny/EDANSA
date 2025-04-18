@@ -84,6 +84,8 @@ def _select_inference_channel(stereo_data: torch.Tensor,
                               == num_channels)
 
         if clipping_available:
+            # Explicit check/assertion for type checker
+            assert clipping_per_segment_tensor is not None, "Clipping tensor is None despite availability check."
             try:
                 excerpt_sample_size = int(excerpt_len * sr)
                 num_segments = clipping_per_segment_tensor.shape[0]
@@ -859,6 +861,8 @@ def _determine_input_root(
         )
         # Determine root based on which input method was likely used
         if input_folder_path_str:
+            # Assertion for type checker
+            assert input_folder_path_str is not None, "input_folder_path_str is None when trying to use it as root."
             return Path(input_folder_path_str)
         elif input_list_path_str:
             return Path(input_list_path_str).parent
@@ -885,6 +889,8 @@ def _determine_input_root(
         logging.warning(
             f"Could not determine common path for input files (Reason: {e}). Falling back to input source directory: %s",
             input_folder_path_str)
+        # Add assertion here as well, although this path might be less likely if ValueError occurs
+        assert input_folder_path_str is not None, "input_folder_path_str is None in ValueError fallback."
         return Path(input_folder_path_str)
     except Exception as e:
         # Determine fallback directory based on input method
@@ -972,9 +978,11 @@ def main(args: argparse.Namespace, setup_fnc: Callable,
             input_data_root=input_data_root  # Pass the determined root
         )
     else:
-        # Log if no files were processed (either list was empty or read error occurred earlier)
+        # Log if no files were identified for processing.
+        # This could be due to an empty input list, no supported files in the input folder,
+        # or an error during file discovery (which should have been logged previously).
         logging.warning(
-            "No audio files found in the input list or list could not be read. Skipping inference run."
+            "No audio files were identified for processing based on the provided input source. Skipping inference run."
         )
 
 
