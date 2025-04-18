@@ -1,23 +1,26 @@
 site_name: EDANSA Bioacoustics Model
 theme:
   name: material
+  features:
+    - content.code.annotate
 
 markdown_extensions:
   - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.superfences
 
 nav:
-  - "Overview": "index.md"
+  - "Overview":
+      - "Introduction": "index.md"
+      - "Installation": "installation.md"
   - "Using the Pre-trained Model":
       - "Introduction": "using_pretrained_model/index.md"
-      - "Installation": "using_pretrained_model/installation.md"
-      - "Preparing Your Data": "using_pretrained_model/data_preparation.md"
-      - "Running the Model": "using_pretrained_model/running_inference.md"
+      - "Providing Audio Data": "using_pretrained_model/providing_audio_data.md"
       - "Understanding Results": "using_pretrained_model/output_explanation.md"
-  - "Training a Custom Model":
-      - "Introduction": "training_custom_model/index.md"
-      - "Installation": "training_custom_model/installation.md"
-      - "Creating Your Dataset": "training_custom_model/dataset_creation.md"
-      - "Running Training": "training_custom_model/training_process.md"
-      - "Evaluating Your Model": "training_custom_model/model_evaluation.md"
+      - "General Model Card (31m2plxv-V1)": "using_pretrained_model/model_card_general_31m2plxv-V1.md"
+      - "Bird Species Model Card (ppq7zxqq)": "using_pretrained_model/model_card_bird_species_ppq7zxqq.md"
   - "Common Information":
       - "Troubleshooting": "common/troubleshooting.md"

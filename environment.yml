@@ -1,18 +1,17 @@
 channels:
-  - pytorch # For pytorch, torchvision, torchaudio
-  - conda-forge # For many other scientific packages
+  - conda-forge # Primary channel
   - defaults
 dependencies:
-  # Python requirement (matches setup.py)
+  # Python requirement
   - python>=3.8,<3.12
 
-  # Core ML Dependencies (using conda names/channels)
+  # Core ML Dependencies (conda-forge will resolve CPU/GPU based on system)
   - pytorch>=2.6,<3
   - torchaudio>=2.6,<2.7
   - torchvision>=0.21,<0.22
   - pytorch-ignite>=0.5,<0.6
 
-  # Other Dependencies (assuming names match pip)
+  # Other Dependencies
   - pyyaml>=6.0,<7.0
   - scikit-learn>=1.6,<1.7
   - matplotlib>=3

@@ -1,0 +1,580 @@
+{
+    "arch": {
+        "value": {
+            "loss": "BCEWithLogitsLoss",
+            "loss_weights": [],
+            "feature_method": "logmel",
+            "global_pool_type": "avg+max",
+            "intermediate_pool_type": "max"
+        }
+    },
+    "debug": {
+        "value": false
+    },
+    "_wandb": {
+        "value": {
+            "m": [],
+            "t": {
+                "1": [
+                    1,
+                    5,
+                    10,
+                    41,
+                    53,
+                    55
+                ],
+                "2": [
+                    1,
+                    5,
+                    10,
+                    41,
+                    53,
+                    55
+                ],
+                "3": [
+                    1,
+                    2,
+                    3,
+                    13,
+                    14,
+                    16,
+                    23,
+                    55,
+                    61
+                ],
+                "4": "3.10.13",
+                "5": "0.18.5",
+                "8": [
+                    5
+                ],
+                "12": "0.18.5",
+                "13": "linux-x86_64"
+            },
+            "cli_version": "0.18.5",
+            "python_version": "3.10.13"
+        }
+    },
+    "device": {
+        "value": "cuda:0"
+    },
+    "epochs": {
+        "value": 500
+    },
+    "run_id": {
+        "value": "ppq7zxqq"
+    },
+    "exp_dir": {
+        "value": "/scratch/enis/data/nna/runs_models/megantaxo/augmentV5/"
+    },
+    "channels": {
+        "value": 1
+    },
+    "patience": {
+        "value": -1
+    },
+    "run_name": {
+        "value": "birdv5_march26_6tags"
+    },
+    "batch_size": {
+        "value": 32
+    },
+    "wandb_mode": {
+        "value": "online"
+    },
+    "audio_dtype": {
+        "value": "torch.float32"
+    },
+    "loc_per_set": {
+        "value": {
+            "test": [],
+            "train": [
+                [
+                    "prudhoe",
+                    "30"
+                ],
+                [
+                    "dalton",
+                    "05"
+                ],
+                [
+                    "anwr",
+                    "47"
+                ],
+                [
+                    "ivvavik",
+                    "sinp05"
+                ],
+                [
+                    "prudhoe",
+                    "29"
+                ],
+                [
+                    "dempster",
+                    "20"
+                ],
+                [
+                    "dalton",
+                    "10"
+                ],
+                [
+                    "anwr",
+                    "37"
+                ],
+                [
+                    "prudhoe",
+                    "19"
+                ],
+                [
+                    "dempster",
+                    "23"
+                ],
+                [
+                    "dempster",
+                    "15"
+                ],
+                [
+                    "prudhoe",
+                    "11"
+                ],
+                [
+                    "dalton",
+                    "tpop"
+                ],
+                [
+                    "prudhoe",
+                    "13"
+                ],
+                [
+                    "dempster",
+                    "25"
+                ],
+                [
+                    "ivvavik",
+                    "sinp07"
+                ],
+                [
+                    "dalton",
+                    "03"
+                ],
+                [
+                    "anwr",
+                    "31"
+                ],
+                [
+                    "dempster",
+                    "16"
+                ],
+                [
+                    "ivvavik",
+                    "ar02"
+                ],
+                [
+                    "anwr",
+                    "48"
+                ],
+                [
+                    "dalton",
+                    "toolik_riv"
+                ],
+                [
+                    "dempster",
+                    "21"
+                ],
+                [
+                    "dempster",
+                    "24"
+                ],
+                [
+                    "prudhoe",
+                    "20"
+                ],
+                [
+                    "anwr",
+                    "42"
+                ],
+                [
+                    "ivvavik",
+                    "ar08"
+                ],
+                [
+                    "anwr",
+                    "35"
+                ],
+                [
+                    "prudhoe",
+                    "25"
+                ],
+                [
+                    "prudhoe",
+                    "15"
+                ],
+                [
+                    "anwr",
+                    "41"
+                ],
+                [
+                    "prudhoe",
+                    "23"
+                ],
+                [
+                    "dalton",
+                    "clara_ck"
+                ],
+                [
+                    "prudhoe",
+                    "22"
+                ],
+                [
+                    "dempster",
+                    "17"
+                ],
+                [
+                    "dalton",
+                    "stun"
+                ],
+                [
+                    "anwr",
+                    "33"
+                ],
+                [
+                    "prudhoe",
+                    "16"
+                ],
+                [
+                    "dalton",
+                    "09"
+                ],
+                [
+                    "prudhoe",
+                    "24"
+                ],
+                [
+                    "prudhoe",
+                    "21"
+                ],
+                [
+                    "anwr",
+                    "44"
+                ],
+                [
+                    "dalton",
+                    "01"
+                ],
+                [
+                    "ivvavik",
+                    "ar03"
+                ],
+                [
+                    "dalton",
+                    "sagwon_ck"
+                ],
+                [
+                    "dalton",
+                    "07"
+                ],
+                [
+                    "dalton",
+                    "happy_valley"
+                ],
+                [
+                    "dempster",
+                    "14"
+                ],
+                [
+                    "anwr",
+                    "34"
+                ],
+                [
+                    "ivvavik",
+                    "ar05"
+                ],
+                [
+                    "dalton",
+                    "chandalar"
+                ],
+                [
+                    "dalton",
+                    "02"
+                ],
+                [
+                    "anwr",
+                    "49"
+                ],
+                [
+                    "ivvavik",
+                    "sinp09"
+                ],
+                [
+                    "dalton",
+                    "ttun"
+                ],
+                [
+                    "dalton",
+                    "06"
+                ],
+                [
+                    "ivvavik",
+                    "ar10"
+                ],
+                [
+                    "dempster",
+                    "13"
+                ],
+                [
+                    "ivvavik",
+                    "sinp10"
+                ],
+                [
+                    "anwr",
+                    "50"
+                ],
+                [
+                    "dalton",
+                    "spop"
+                ],
+                [
+                    "ivvavik",
+                    "sinp08"
+                ],
+                [
+                    "anwr",
+                    "40"
+                ],
+                [
+                    "dempster",
+                    "19"
+                ],
+                [
+                    "prudhoe",
+                    "26"
+                ],
+                [
+                    "dalton",
+                    "08"
+                ]
+            ],
+            "valid": [
+                [
+                    "dalton",
+                    "douglas_ck"
+                ],
+                [
+                    "prudhoe",
+                    "12"
+                ],
+                [
+                    "anwr",
+                    "43"
+                ],
+                [
+                    "ivvavik",
+                    "ar09"
+                ],
+                [
+                    "dempster",
+                    "22"
+                ],
+                [
+                    "dalton",
+                    "04"
+                ],
+                [
+                    "anwr",
+                    "32"
+                ],
+                [
+                    "anwr",
+                    "45"
+                ],
+                [
+                    "ivvavik",
+                    "ar06"
+                ],
+                [
+                    "ivvavik",
+                    "ar07"
+                ],
+                [
+                    "prudhoe",
+                    "18"
+                ],
+                [
+                    "anwr",
+                    "39"
+                ],
+                [
+                    "prudhoe",
+                    "17"
+                ],
+                [
+                    "ivvavik",
+                    "ar04"
+                ],
+                [
+                    "ivvavik",
+                    "sinp01"
+                ],
+                [
+                    "anwr",
+                    "46"
+                ],
+                [
+                    "prudhoe",
+                    "14"
+                ],
+                [
+                    "ivvavik",
+                    "sinp06"
+                ],
+                [
+                    "anwr",
+                    "36"
+                ],
+                [
+                    "prudhoe",
+                    "27"
+                ],
+                [
+                    "ivvavik",
+                    "sinp03"
+                ],
+                [
+                    "dempster",
+                    "12"
+                ],
+                [
+                    "prudhoe",
+                    "28"
+                ],
+                [
+                    "anwr",
+                    "38"
+                ],
+                [
+                    "dempster",
+                    "11"
+                ]
+            ]
+        }
+    },
+    "max_mel_len": {
+        "value": 938
+    },
+    "target_taxo": {
+        "value": [
+            "4.1.10.1",
+            "4.1.10.2",
+            "4.1.10.3",
+            "4.1.10.17",
+            "4.1.10.5",
+            "4.1.10.38"
+        ]
+    },
+    "ignore_files": {
+        "value": []
+    },
+    "project_name": {
+        "value": "megan"
+    },
+    "weight_decay": {
+        "value": 0.01
+    },
+    "augmentations": {
+        "value": {
+            "mix_channels": false,
+            "random_mergev2": true,
+            "spec_augmenter": true,
+            "AddGaussianNoise": true,
+            "random_merge_fair": false,
+            "mix_channels_coeff": 0.3,
+            "gauss_max_amplitude": 0.015
+        }
+    },
+    "learning_rate": {
+        "value": 0.001
+    },
+    "load_clipping": {
+        "value": true
+    },
+    "sampling_rate": {
+        "value": 48000
+    },
+    "category_count": {
+        "value": 6
+    },
+    "dataset_folder": {
+        "value": null
+    },
+    "dataset_name_v": {
+        "value": "jesse_v3"
+    },
+    "excerpt_length": {
+        "value": 10
+    },
+    "run_id_2resume": {
+        "value": ""
+    },
+    "dataset_csv_path": {
+        "value": "/scratch/enis/data/nna/labeling/jesse/edansa_birds-v5_balancedv1.csv"
+    },
+    "checkpoint_metric": {
+        "value": "val_f1_min"
+    },
+    "code2excell_names": {
+        "value": {
+            "4.1.10.1": "LALO",
+            "4.1.10.2": "SAVS",
+            "4.1.10.3": "WIPT",
+            "4.1.10.5": "ATSP",
+            "4.1.10.11": "AMGP",
+            "4.1.10.13": "AMRO",
+            "4.1.10.17": "CORE",
+            "4.1.10.24": "GWFG",
+            "4.1.10.28": "LBDO",
+            "4.1.10.30": "PESA",
+            "4.1.10.38": "WCSP",
+            "4.1.10.41": "Duck",
+            "4.1.10.42": "Goose",
+            "4.1.10.43": "Jaeger"
+        }
+    },
+    "dataset_in_memory": {
+        "value": true
+    },
+    "excell_names2code": {
+        "value": {
+            "AMGP": "4.1.10.11",
+            "AMRO": "4.1.10.13",
+            "ATSP": "4.1.10.5",
+            "CORE": "4.1.10.17",
+            "Duck": "4.1.10.41",
+            "GWFG": "4.1.10.24",
+            "LALO": "4.1.10.1",
+            "LBDO": "4.1.10.28",
+            "PESA": "4.1.10.30",
+            "SAVS": "4.1.10.2",
+            "WCSP": "4.1.10.38",
+            "WIPT": "4.1.10.3",
+            "Goose": "4.1.10.42",
+            "Jaeger": "4.1.10.43"
+        }
+    },
+    "taxonomy_file_path": {
+        "value": "/home/enis/projects/nna/src/nna/assets/taxonomy/taxonomy_V2.yaml"
+    },
+    "sample_length_limit": {
+        "value": 2
+    },
+    "dataset_cache_folder": {
+        "value": "/scratch/enis/data/nna/labeling/megan/datasetV5_cache"
+    },
+    "audio_data_cache_path": {
+        "value": ""
+    },
+    "checkpointfile_2resume": {
+        "value": ""
+    },
+    "checkpoint_every_Nth_epoch": {
+        "value": 100
+    }
+}
