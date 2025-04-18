@@ -130,7 +130,7 @@ def get_clipping_percent(sound_array: Union[np.ndarray, torch.Tensor],
         # Check for warning by calculating max on original device
         # .item() brings the scalar result to CPU
         max_abs_val = torch.max(torch.abs(sound_array_torch)).item()  # Safe now
-        if max_abs_val > 1.0 + 1e-4:
+        if max_abs_val > 1.0 + 5e-2:
             warnings.warn(
                 f"Input audio data is float type but has values outside the "
                 f"typical normalized range [-1.0, 1.0] (max abs value: {max_abs_val:.4f}). "
