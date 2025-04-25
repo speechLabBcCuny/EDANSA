@@ -834,11 +834,17 @@ def _find_audio_files(input_folder_path_str: str) -> List[Path]:
     audio_files = []
     logging.info(f"Searching for audio files in '{input_folder_path_str}'...")
     for ext in supported_extensions:
-        # Search case-insensitively
-        audio_files.extend(input_folder.rglob(f"*[.{ext[1:].lower()}]"))
-        audio_files.extend(input_folder.rglob(f"*[.{ext[1:].upper()}]"))
+        # Search case-insensitively using glob pattern that matches the exact extension
+        lower_ext = ext.lower()
+        upper_ext = ext.upper()
+        # Escape the dot in the extension
+        pattern_lower = f"**/*{lower_ext}"
+        pattern_upper = f"**/*{upper_ext}"
+        audio_files.extend(input_folder.glob(pattern_lower))
+        audio_files.extend(input_folder.glob(pattern_upper))
 
-    # Remove duplicates that might arise from case-insensitive globbing
+    # Remove duplicates that might arise from case-insensitive globbing or overlaps
+    # and ensure they are files (rglob can potentially match directories if name ends with extension)
     audio_files = sorted(list(set(audio_files)))
 
     if not audio_files:
