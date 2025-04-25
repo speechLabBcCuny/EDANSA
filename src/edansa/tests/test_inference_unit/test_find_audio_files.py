@@ -93,3 +93,49 @@ def test_find_audio_files(tmp_path):
     for unsupported in unsupported_files:
         assert unsupported.resolve() not in found_files_abs, \
             f"Unsupported file '{unsupported.name}' was incorrectly included in the results."
+
+
+def test_find_audio_files_empty_folder(tmp_path):
+    """Tests that an empty list is returned for an empty folder."""
+    empty_dir = tmp_path / "empty_test_folder"
+    empty_dir.mkdir()
+
+    found_files = _find_audio_files(str(empty_dir))
+    assert found_files == [], "Expected empty list for an empty folder, but got files."
+
+
+def test_find_audio_files_nonexistent_folder(tmp_path):
+    """Tests that FileNotFoundError is raised for a non-existent folder."""
+    non_existent_dir = tmp_path / "non_existent_folder"
+    # Do not create the directory
+    with pytest.raises(FileNotFoundError):
+        _find_audio_files(str(non_existent_dir))
+
+
+def test_find_audio_files_directory_with_extension(tmp_path):
+    """
+    Tests that directories named like audio files (e.g., sounds.wav)
+    are not included in the results.
+    """
+    base_dir = tmp_path / "dir_ext_test"
+    base_dir.mkdir()
+
+    # Create a real audio file
+    (base_dir / "real_audio.wav").touch()
+
+    # Create a directory named like an audio file
+    (base_dir / "fake_audio.wav").mkdir()
+
+    # Create a file inside the fake directory (should be ignored)
+    (base_dir / "fake_audio.wav" / "nested.txt").touch()
+
+    found_files = _find_audio_files(str(base_dir))
+
+    # Ensure found_files are absolute paths for comparison
+    found_files_abs = sorted([f.resolve() for f in found_files])
+    expected_files_abs = sorted([(base_dir / "real_audio.wav").resolve()])
+
+    assert len(
+        found_files_abs) == 1, "Expected only one file, but found more or less."
+    assert found_files_abs == expected_files_abs, \
+        f"Expected only 'real_audio.wav', but got: {found_files_abs}"

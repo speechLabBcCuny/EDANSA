@@ -844,8 +844,12 @@ def _find_audio_files(input_folder_path_str: str) -> List[Path]:
         audio_files.extend(input_folder.glob(pattern_upper))
 
     # Remove duplicates that might arise from case-insensitive globbing or overlaps
-    # and ensure they are files (rglob can potentially match directories if name ends with extension)
-    audio_files = sorted(list(set(audio_files)))
+    unique_paths = set(audio_files)
+    # Ensure they are files (glob can potentially match directories if name ends with extension)
+    file_paths = [p for p in unique_paths if p.is_file()]
+
+    # Sort the final list of files
+    audio_files = sorted(file_paths)
 
     if not audio_files:
         logging.warning(f"No audio files found in '{input_folder_path_str}'.")
