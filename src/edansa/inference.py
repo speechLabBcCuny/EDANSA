@@ -364,6 +364,15 @@ def create_arg_parser():
         action='store_true',  # Default is False
     )
 
+    # --- Logging Control --- #
+    parser.add_argument(
+        '--log-level',
+        type=str,
+        default='INFO',
+        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+        help='Set the logging level (default: INFO).'
+    )
+
     # args = parser.parse_args() # Removed: Parsing happens in the calling script now
 
     # Handle default output folder path creation after parsing
@@ -928,6 +937,11 @@ def _determine_input_root(
 def main(args: argparse.Namespace, setup_fnc: Callable,
          get_data_loader: Callable):
     """Main entry point for the inference script."""
+    # Configure logging based on command-line argument
+    log_level_str = args.log_level.upper()
+    log_level_numeric = getattr(logging, log_level_str, logging.INFO)
+    logging.basicConfig(level=log_level_numeric, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+
     # 1. Setup: Load model, config, and IO handler
     # Let setup_fnc handle initial arg parsing related to model/config loading if needed
     model_saved, config, file_io = setup_fnc(args)
