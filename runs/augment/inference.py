@@ -296,20 +296,25 @@ if __name__ == '__main__':
     # Parse arguments defined in inference.py
     args = parser.parse_args()
 
-    # Handle default output folder path creation *after* parsing
+    # Configure basic logging using the log_level from command line args
+    log_level_str_entry = args.log_level.upper()
+    log_level_numeric_entry = getattr(logging, log_level_str_entry, logging.INFO) # Default to INFO if somehow invalid
+    logging.basicConfig(
+        level=log_level_numeric_entry,
+        format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        force=True # Ensure this configuration is applied
+    )
+
+    # Handle default output folder path creation *after* parsing and logging setup
     if args.output_folder is None:
         output_path = Path("outputs")
         # The directory itself is created by the IO handler later
         args.output_folder = str(output_path.resolve())
-        logging.info(
+        logging.info( # This will now use the configured level
             f"Output folder not specified, using default: {args.output_folder}")
 
-    # Configure basic logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S')
-    logging.info("Starting inference script.")
+    logging.info("Starting inference script.") # This will use the configured level
 
     # Call the main function from the inference module
     inference.main(args, setup, prepare_dataloader_from_audio_ins)

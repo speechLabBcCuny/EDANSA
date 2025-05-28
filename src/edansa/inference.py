@@ -940,7 +940,22 @@ def main(args: argparse.Namespace, setup_fnc: Callable,
     # Configure logging based on command-line argument
     log_level_str = args.log_level.upper()
     log_level_numeric = getattr(logging, log_level_str, logging.INFO)
-    logging.basicConfig(level=log_level_numeric, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+
+    root_logger = logging.getLogger()
+
+    # Clear existing handlers from the root logger
+    # This is important if logging was configured by a calling script
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # Set the desired level on the root logger
+    root_logger.setLevel(log_level_numeric)
+
+    # Add a new stream handler with the desired format
+    stream_handler = logging.StreamHandler() # Defaults to sys.stderr
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+    stream_handler.setFormatter(formatter)
+    root_logger.addHandler(stream_handler)
 
     # 1. Setup: Load model, config, and IO handler
     # Let setup_fnc handle initial arg parsing related to model/config loading if needed
