@@ -147,6 +147,15 @@ class AugmentingAudioDataset(Dataset):
     '''
         self.xdtype = xdtype
         self.device = device  # Store the device
+        # Normalize device to be specific if it's a generic CUDA device
+        if self.device.type == 'cuda' and self.device.index is None:
+            if torch.cuda.is_available(): # Ensure CUDA is actually available
+                self.device = torch.device('cuda', torch.cuda.current_device())
+            else:
+                # Fallback if cuda was specified but not available (should not happen with proper setup)
+                self.device = torch.device('cpu')
+                logging.warning("CUDA specified but not available; falling back to CPU for dataset device.")
+
         self.X = X  # Keep X as is for now (list of paths, numpy array, or potentially tensors)
         self.mono = mono
         try:
@@ -357,10 +366,18 @@ class AugmentingAudioDataset(Dataset):
             sample_final = self.transform(sample_final)
             # Ensure transform output stays on the correct device, or handle potential moves
             if isinstance(sample_final, tuple) and len(sample_final) > 1:
-                if sample_final[0].device != self.device or sample_final[
-                        1].device != self.device:
-                    print(
-                        "Warning: Transform potentially moved tensors off the specified device."
+                if sample_final[0].device != self.device or sample_final[1].device != self.device:
+                    transform_device_str = str(self.transform.device) if hasattr(self.transform, 'device') else 'N/A'
+                    if hasattr(self.transform, 'transforms') and self.transform.transforms:
+                        # Handle Compose case, check device of first transform if possible
+                        first_transform_in_compose = self.transform.transforms[0]
+                        if hasattr(first_transform_in_compose, 'device'):
+                            transform_device_str = str(first_transform_in_compose.device)
+
+                    logging.warning(
+                        f"Dataset Check: Post-transform device mismatch. "
+                        f"x_device: {sample_final[0].device}, y_device: {sample_final[1].device}, "
+                        f"dataset_device: {self.device}, transform_device_reported: {transform_device_str}"
                     )
                     # Optionally move back:
                     # sample_final = (sample_final[0].to(self.device), sample_final[1].to(self.device))
