@@ -45,6 +45,7 @@ def get_config(args: argparse.Namespace) -> Dict:
         args, 'skip_clipping_info', config.get('skip_clipping_info', False))
     # config['v_str'] = args.model_id # REMOVED: model_id arg doesn't exist
     config['model_path'] = args.model_path
+    config['inference_batch_size'] = args.inference_batch_size # Added for configurable batch size
     config['sampling_rate'] = config.get('sampling_rate', DEFAULT_SAMPLING_RATE)
     config['excerpt_length'] = config.get('excerpt_length',
                                           DEFAULT_EXCERPT_LENGTH)
@@ -208,7 +209,7 @@ def prepare_dataloader_from_audio_ins(
             torch.utils.data.DataLoader(  # type: ignore
                 dataset['predict'],
                 shuffle=False,
-                batch_size=16)
+                batch_size=config['inference_batch_size']) # Using configured batch size
     }
     return dataloader
 

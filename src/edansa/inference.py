@@ -340,6 +340,13 @@ def create_arg_parser():
         action='store_true',
     )
 
+    parser.add_argument(
+        '--inference_batch_size',
+        type=int,
+        default=16,
+        help='Batch size for inference.'
+    )
+
     # --- Optional Processing & Output --- Add device here
     parser.add_argument(
         '--device',
