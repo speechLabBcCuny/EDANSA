@@ -136,3 +136,4 @@ wandb/latest-run
 # src/edansa/tests/assets/audio/.download_complete # Removed - old marker location
 MagicMock/mock.output_folder/*
 src/edansa/tests/assets/*
+.cursor/rules/coding-general.mdc
