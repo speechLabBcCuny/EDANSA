@@ -165,6 +165,9 @@ def prepare_dataloader_from_audio_ins(
     else:
         mono_data_tensor = mono_data.float()  # Ensure float
 
+    # Explicitly move to target_device
+    mono_data_tensor = mono_data_tensor.to(target_device)
+
     input_file_data = inference.pad_audio(mono_data_tensor,
                                           config['excerpt_length'],
                                           sr)  # Use passed sr
