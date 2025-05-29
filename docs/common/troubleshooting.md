@@ -45,7 +45,11 @@ This page lists common issues encountered when installing or running the EDANSA 
 *   **Possible Causes & Solutions:**
     *   **Missing Backend:** `torchaudio` needs a backend library like FFmpeg to load audio. 
         *   If using Conda with `environment.yml`, `ffmpeg` should have been installed. Verify using `python -c "import torchaudio; print(torchaudio.list_audio_backends())"`. If `ffmpeg` isn't listed, try reinstalling the environment or explicitly installing ffmpeg: `conda install ffmpeg -c conda-forge`.
-        *   If using Pip, you likely need to install `ffmpeg` (or `sox`, `libsndfile`) using your system's package manager (e.g., `sudo apt update && sudo apt install ffmpeg`, `brew install ffmpeg`).
+        *   If using Pip, you likely need to install `ffmpeg` (or `sox`, `libsndfile`) using your system's package manager (Refer to the [official torchaudio documentation on optional dependencies](https://docs.pytorch.org/audio/stable/installation.html#optional-dependencies) for more details). 
+        *   **Important FFmpeg Version Note:** `torchaudio` versions compatible with PyTorch 2.6 do not work correctly with FFmpeg 7.x. It is **strongly recommended to install an FFmpeg 6.x or 5.x version.**
+        *   **Linux/macOS Examples:**
+            *   `sudo apt update && sudo apt install ffmpeg` (Check the version provided by your distribution. If it's 7.x, you may need to find `ffmpeg-6` or `ffmpeg-5` packages, or install from a PPA/source that provides an older version).
+            *   `brew install ffmpeg@6` (or `ffmpeg@5` if `ffmpeg@6` is not available or if you prefer an older stable version).
     *   **Corrupt Audio File:** The specific audio file might be corrupted or incomplete.
     *   **Unsupported Format (for Pip):** If using Pip, ensure the audio format is supported by the backend you have installed.
 
