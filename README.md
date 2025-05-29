@@ -10,8 +10,8 @@ This repository provides pre-trained models for detecting bioacoustic events and
 
 Two primary pre-trained models are available in the `assets/` directory:
 
-1.  **General Bioacoustics Model (`31m2plxv-V1`):** Detects broader sound categories (Biophony, Anthropophony, Birds, Insects, Silence, etc.). See [Model Card](./docs/using_pretrained_model/model_card_general_31m2plxv-V1.md).
-2.  **Bird Species Model (`ppq7zxqq`):** Detects specific North American arctic bird species (Lapland Longspur, White-crowned Sparrow, etc.). See [Model Card](./docs/using_pretrained_model/model_card_bird_species_ppq7zxqq.md).
+1.  **General Bioacoustics Model (`31m2plxv-V1`):** Detects broader sound categories (Biophony, Anthropophony, Birds, Insects, Silence, etc.). See [Model Card](https://speechlabbccuny.github.io/EDANSA/using_pretrained_model/model_card_general_31m2plxv-V1/).
+2.  **Bird Species Model (`ppq7zxqq`):** Detects specific North American arctic bird species (Lapland Longspur, White-crowned Sparrow, etc.). See [Model Card](https://speechlabbccuny.github.io/EDANSA/using_pretrained_model/model_card_bird_species_ppq7zxqq/).
 
 ## Installation
 
@@ -34,7 +34,7 @@ Two primary pre-trained models are available in the `assets/` directory:
         ```
         *(This environment uses CPU-only `pytorch` and `torchaudio`.)*
 
-    *(See [Full Installation Guide](./docs/installation.md) for details, alternative Conda/Mamba commands, Pip instructions, and troubleshooting.)*
+    *(See [Full Installation Guide](https://speechlabbccuny.github.io/EDANSA/installation/) for details, alternative Conda/Mamba commands, Pip instructions, and troubleshooting.)*
 
 ## Basic Inference Usage
 
@@ -48,7 +48,7 @@ python runs/augment/inference.py \
     --output_folder /path/to/save/results/
 ```
 
-*(See [Running Inference Guide](./docs/using_pretrained_model/index.md) for more details and arguments.)*
+*(See [Running Inference Guide](https://speechlabbccuny.github.io/EDANSA/using_pretrained_model/) for more details and arguments.)*
 
 ## Documentation
 
