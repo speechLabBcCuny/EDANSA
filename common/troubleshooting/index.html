@@ -913,7 +913,13 @@
 <li><strong>Possible Causes &amp; Solutions:</strong><ul>
 <li><strong>Missing Backend:</strong> <code>torchaudio</code> needs a backend library like FFmpeg to load audio. <ul>
 <li>If using Conda with <code>environment.yml</code>, <code>ffmpeg</code> should have been installed. Verify using <code>python -c "import torchaudio; print(torchaudio.list_audio_backends())"</code>. If <code>ffmpeg</code> isn't listed, try reinstalling the environment or explicitly installing ffmpeg: <code>conda install ffmpeg -c conda-forge</code>.</li>
-<li>If using Pip, you likely need to install <code>ffmpeg</code> (or <code>sox</code>, <code>libsndfile</code>) using your system's package manager (e.g., <code>sudo apt update &amp;&amp; sudo apt install ffmpeg</code>, <code>brew install ffmpeg</code>).</li>
+<li>If using Pip, you likely need to install <code>ffmpeg</code> (or <code>sox</code>, <code>libsndfile</code>) using your system's package manager (Refer to the <a href="https://docs.pytorch.org/audio/stable/installation.html#optional-dependencies">official torchaudio documentation on optional dependencies</a> for more details). </li>
+<li><strong>Important FFmpeg Version Note:</strong> <code>torchaudio</code> versions compatible with PyTorch 2.6 do not work correctly with FFmpeg 7.x. It is <strong>strongly recommended to install an FFmpeg 6.x or 5.x version.</strong></li>
+<li><strong>Linux/macOS Examples:</strong><ul>
+<li><code>sudo apt update &amp;&amp; sudo apt install ffmpeg</code> (Check the version provided by your distribution. If it's 7.x, you may need to find <code>ffmpeg-6</code> or <code>ffmpeg-5</code> packages, or install from a PPA/source that provides an older version).</li>
+<li><code>brew install ffmpeg@6</code> (or <code>ffmpeg@5</code> if <code>ffmpeg@6</code> is not available or if you prefer an older stable version).</li>
+</ul>
+</li>
 </ul>
 </li>
 <li><strong>Corrupt Audio File:</strong> The specific audio file might be corrupted or incomplete.</li>
