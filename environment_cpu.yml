@@ -5,12 +5,11 @@ dependencies:
   # Python requirement
   - python>=3.8,<3.12
 
-  # Core ML Dependencies (conda-forge will resolve CPU/GPU based on system)
-  - pytorch>=2.6,<3
-  - torchaudio>=2.6,<2.7
-  - torchvision>=0.21,<0.22
+  # Core ML Dependencies
+  - pytorch>=2.6,<3 # CPU-only build
+  - torchvision>=0.21,<0.22 # Will pick up CPU variant
   - pytorch-ignite>=0.5,<0.6
-
+  
   # Other Dependencies
   - pyyaml>=6.0,<7.0
   - scikit-learn>=1.6,<1.7
@@ -22,8 +21,12 @@ dependencies:
   - pytest>=8.3,<9.0
   - pytest-mock>=3.14,<4.0
   # ffmpeg is required for torchaudio
-  - ffmpeg<7.0
+  - ffmpeg>=6,<7
   - requests
 
-  # - pip:
-  #   - some-package-only-on-pypi
+  - pip  # make sure pip is available
+
+  - pip:
+      # Install FFmpeg-enabled torchaudio from official PyTorch wheel for CPU
+      - torchaudio --index-url https://download.pytorch.org/whl/cpu
+      - -e .

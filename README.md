@@ -20,17 +20,21 @@ Two primary pre-trained models are available in the `assets/` directory:
     git clone https://github.com/speechLabBcCuny/EDANSA.git
     cd EDANSA
     ```
-2.  **Create Conda Environment (Recommended):** Use the provided environment file. You must specify an environment name (e.g., `edansa`).
-    ```bash
-    conda env create -f environment.yml -n <your_env_name>
-    conda activate <your_env_name>
-    ```
-    *(See [Full Installation Guide](./docs/installation.md) for details, Pip instructions, and troubleshooting.)*
+2.  **Create Conda Environment (Recommended):** Choose the environment file based on your system (GPU or CPU).
+    *   **For GPU-enabled systems (e.g., HPC nodes with NVIDIA GPUs):**
+        ```bash
+        micromamba create -f environment_gpu.yml -n <your_env_name>
+        micromamba activate <your_env_name>
+        ```
+        *(This environment uses `pytorch-gpu` and CUDA-enabled `torchaudio`.)*
+    *   **For CPU-only systems (e.g., local machines, CPU-only servers):**
+        ```bash
+        micromamba create -f environment_cpu.yml -n <your_env_name>
+        micromamba activate <your_env_name>
+        ```
+        *(This environment uses CPU-only `pytorch` and `torchaudio`.)*
 
-3.  **Install the Package:**
-    ```bash
-    pip install -e .
-    ```
+    *(See [Full Installation Guide](./docs/installation.md) for details, alternative Conda/Mamba commands, Pip instructions, and troubleshooting.)*
 
 ## Basic Inference Usage
 

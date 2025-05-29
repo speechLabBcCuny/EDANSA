@@ -14,9 +14,9 @@ here = pathlib.Path(__file__).parent.resolve()
 # Get the long description from the README file
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 
-# Get requirements from requirements.txt
-with open(here / 'requirements.txt', encoding='utf-8') as f:
-    requirements = f.read().splitlines()
+# Requirements are now handled by requirements_cpu.txt and requirements_gpu_cu118.txt for local/dev installs.
+# For `pip install edansa` (e.g. from PyPI), core dependencies are listed below.
+# PyTorch and its variants should be installed by the user separately or via the specific requirements files.
 
 # Arguments marked as "Required" below must be included for upload to PyPI.
 # Fields marked as "Optional" may be commented out.
@@ -151,7 +151,19 @@ setup(
 
     # if you like to know exact enviroment of the project, check the file:
     # conda_env_snapshot.yml
-    install_requires=requirements,
+    install_requires=[
+        'PyYAML>=6.0,<7.0',
+        'pytorch-ignite>=0.5,<0.6',
+        'scikit-learn>=1.6,<1.7',
+        'matplotlib>=3',
+        'numpy>=2',
+        'wandb>=0.19,<1',
+        'tqdm>=4.67',
+        'pandas>=2.2,<3.0',
+        'pytest>=8.3,<9.0',
+        'pytest-mock>=3.14,<4.0',
+        'requests'
+    ],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
