@@ -151,7 +151,7 @@ def _select_inference_channel(stereo_data: torch.Tensor,
             selected_method = default_method  # Change method for subsequent checks
 
     if selected_method == 'average':
-        print(f"  Averaging channels for {file_path_for_log}")
+        logging.debug(f"  Averaging channels for {file_path_for_log}")
         # Use torch.mean
         return torch.mean(stereo_data.float(), dim=0)  # Ensure float for mean
 
