@@ -138,3 +138,4 @@ MagicMock/mock.output_folder/*
 src/edansa/tests/assets/*
 .cursor/rules/coding-general.mdc
 .windsurfrules
+*.o*

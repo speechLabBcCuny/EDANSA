@@ -17,15 +17,11 @@ MODEL_REL_PATH="assets/31m2plxv-V1/model_info/best_model_370_val_f1_min=0.8028.p
 CONFIG_FILE_REL_PATH="assets/31m2plxv-V1/model_info/model_config.json"
 
 # --- Parallelism and Batch Size ---
-# MODIFIED: Set to 10 for 5 jobs per GPU (2 GPUs * 5 jobs/GPU)
-NUM_PARALLEL_JOBS=16
-GPU_COUNT=2
-# jobs per gpu
-JOBS_PER_GPU=$((NUM_PARALLEL_JOBS / GPU_COUNT))
+GPU_COUNT=4
+NUM_PARALLEL_JOBS=$((GPU_COUNT * 8))
 INFERENCE_BATCH_SIZE=32
 echo "NUM_PARALLEL_JOBS: $NUM_PARALLEL_JOBS"
 echo "GPU_COUNT: $GPU_COUNT"
-echo "JOBS_PER_GPU: $JOBS_PER_GPU"
 echo "INFERENCE_BATCH_SIZE: $INFERENCE_BATCH_SIZE"
 # --- Construct full paths ---
 PYTHON_SCRIPT_PATH="$EDANSA_PROJECT_ROOT/$PYTHON_SCRIPT_REL_PATH"
@@ -78,6 +74,7 @@ mkdir -p "$MAIN_OUTPUT_DIR" || { echo "Error: Could not create main output direc
 # --- Activate Micromamba Environment ---
 echo "Initializing and activating micromamba environment 'edansa'..."
 
+export MAMBA_ROOT_PREFIX="/glade/work/ecoban/micromamba"
 # Define a local __mamba_exe function that points to the absolute path
 __mamba_exe() {
     "$_MICROMAMBA_EXEC_PATH" "${@}"
@@ -109,7 +106,8 @@ generate_folder_pairs() {
     local base_dir="$MAIN_INPUT_DIR"
     local output_base_dir="$MAIN_OUTPUT_DIR"
     # List the specific folders you want to process
-    local folders_to_process=("dalton" "collars")
+    # "dalton" "prudhoe"  "dempster" "ivvavik" "anwr"
+    local folders_to_process=("prudhoe")
     for folder in "${folders_to_process[@]}"; do
         local current_input_base="$base_dir/$folder"
         if [ -d "$current_input_base" ]; then
@@ -137,7 +135,7 @@ run_inference_job() {
     local slot_num="$4" # GNU Parallel's slot number {%}
 
     # Calculate GPU ID: 0 for slots 1-5, 1 for slots 6-10
-    local gpu_id=$(( (slot_num - 1) / JOBS_PER_GPU ))
+    local gpu_id=$(( (slot_num - 1) % GPU_COUNT ))
 
     echo "[Job ${job_num} Slot ${slot_num} GPU ${gpu_id} $(date +'%Y-%m-%d %H:%M:%S')] Starting: Input='${input_folder}', Output='${output_folder}'"
     mkdir -p "${output_folder}"
@@ -169,7 +167,7 @@ run_inference_job() {
 export -f run_inference_job
 export _MICROMAMBA_EXEC_PATH # Export this so the function can find it if needed in subshells
 export PYTHON_SCRIPT_PATH MODEL_PATH CONFIG_FILE INFERENCE_BATCH_SIZE # Export needed vars
-export JOBS_PER_GPU # <--- ADD THIS LINE
+export GPU_COUNT
 # --- Main execution ---
 echo ""
 echo "Starting parallel inference processing..."
@@ -191,8 +189,6 @@ echo ""
 # MODIFIED: Changed -j value and added {%} to the command
 generate_folder_pairs | parallel --colsep ' ' \
     -j "$NUM_PARALLEL_JOBS" \
-    --eta \
-    --bar \
     --halt now,fail=1 \
     --env _ \
     run_inference_job {1} {2} {#} {%} # Pass input_folder, output_folder, job_num, and slot_num
