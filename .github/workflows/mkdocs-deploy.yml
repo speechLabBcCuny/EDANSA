@@ -1,0 +1,54 @@
+name: Deploy MkDocs site to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Or your default branch
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+  pull_request: # Optional: build on PRs to check for errors
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    # Skip building on PRs if you only want to deploy on merge to main
+    # However, it's good practice to build on PRs to catch errors early.
+    # if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed') 
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Using a specific recent version
+
+      - name: Install dependencies
+        run: |
+          pip install mkdocs mkdocs-material
+
+      - name: Build MkDocs site
+        # The 'site_url' in mkdocs.yml is important for correct links if your site is not at the root of the domain.
+        # For GitHub project pages, it should be: https://<username>.github.io/<repository-name>/
+        # Example: mkdocs build --site-url https://speechlabbccuny.github.io/EDANSA/
+        # However, peaceiris/actions-gh-pages often handles this well if site_url is not set or relative.
+        # For now, a simple build command is usually sufficient if site_url is correctly set in mkdocs.yml or if not needed.
+        run: mkdocs build # This creates the 'site' directory
+
+      # Only deploy if it's a push to the main branch
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          # By default, this action pushes to the 'gh-pages' branch.
+          # Ensure your GitHub Pages settings are configured to serve from 'gh-pages' branch, /(root) folder.

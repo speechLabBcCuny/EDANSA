@@ -1,4 +1,5 @@
 site_name: EDANSA Bioacoustics Model
+site_url: https://speechlabbccuny.github.io/EDANSA/
 theme:
   name: material
   features:
