@@ -1,3 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://speechlabbccuny.github.io/EDANSA/</loc>
+         <lastmod>2025-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://speechlabbccuny.github.io/EDANSA/installation/</loc>
+         <lastmod>2025-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://speechlabbccuny.github.io/EDANSA/common/troubleshooting/</loc>
+         <lastmod>2025-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://speechlabbccuny.github.io/EDANSA/using_pretrained_model/</loc>
+         <lastmod>2025-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://speechlabbccuny.github.io/EDANSA/using_pretrained_model/model_card_bird_species_ppq7zxqq/</loc>
+         <lastmod>2025-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://speechlabbccuny.github.io/EDANSA/using_pretrained_model/model_card_general_31m2plxv-V1/</loc>
+         <lastmod>2025-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://speechlabbccuny.github.io/EDANSA/using_pretrained_model/output_explanation/</loc>
+         <lastmod>2025-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://speechlabbccuny.github.io/EDANSA/using_pretrained_model/providing_audio_data/</loc>
+         <lastmod>2025-05-29</lastmod>
+    </url>
 </urlset>
