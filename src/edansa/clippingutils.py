@@ -96,6 +96,8 @@ def get_clipping_percent(sound_array: Union[np.ndarray, torch.Tensor],
     # Convert numpy array to torch tensor if necessary
     if isinstance(sound_array, np.ndarray):
         try:
+            # log this as debug
+            logging.debug(f"Converting numpy array to torch tensor: {sound_array.shape}")
             sound_array_torch = torch.from_numpy(sound_array)
         except TypeError as e:
             raise TypeError(
