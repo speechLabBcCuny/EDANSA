@@ -6,7 +6,7 @@ This guide covers how to set up the necessary environment and install the EDANSA
 
 *   **Git:** You need Git installed to clone the repository. You can download it from [git-scm.com](https://git-scm.com/).
 *   **(Recommended) Micromamba/Mamba or Conda:** For managing environments and dependencies, we strongly recommend Micromamba or Mamba for significantly faster performance. Standard Conda (from Miniconda or Anaconda) can also be used. If you need to install one, see the [Micromamba installation guide](https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html) or the [Miniconda documentation](https://docs.conda.io/en/latest/miniconda.html).
-*   **(Optional) Python:** If not using Conda, you'll need Python installed (version >= 3.8 and < 3.12).
+*   **(Optional) Python:** If not using Conda, you'll need Python installed (version >= 3.10 and < 3.15).
 *   **(GPU Users) NVIDIA Drivers:** If you intend to use a GPU, ensure you have appropriate NVIDIA drivers installed *before* creating the conda environment.
 
 ## Step 1: Clone the Repository
@@ -68,19 +68,19 @@ This method uses `pip` and specific `requirements_*.txt` files to install depend
     ```
 
 2.  **Install Dependencies using Pip:**
-    Choose the requirements file that matches your system (CPU or GPU with CUDA 11.8). Then, run the `pip install -r` command. This will install PyTorch, Torchvision, Torchaudio from the correct PyTorch index, all other dependencies, and the EDANSA package in editable mode.
+    Choose the requirements file that matches your system (CPU or GPU with CUDA 12.8). Then, run the `pip install -r` command. This will install PyTorch, Torchvision, Torchaudio from the correct PyTorch index, all other dependencies, and the EDANSA package in editable mode.
 
     *   **For CPU-only systems:**
         ```bash
         pip install -r requirements_cpu.txt
         ```
 
-    *   **For GPU-enabled systems (CUDA 11.8):**
-        Ensure your NVIDIA drivers are installed and compatible with CUDA 11.8.
+    *   **For GPU-enabled systems (CUDA 12.8):**
+        Ensure your NVIDIA drivers are installed and compatible with CUDA 12.8.
         ```bash
-        pip install -r requirements_gpu_cu118.txt
+        pip install -r requirements_gpu_cu128.txt
         ```
-        *   **Important for CUDA users:** If you are installing for GPU, you must ensure you have the correct NVIDIA drivers and the corresponding CUDA Toolkit (version 11.8 in this case) installed *manually* on your system. `pip` only installs the PyTorch library compiled for that CUDA version, not the CUDA Toolkit itself.
+        *   **Important for CUDA users:** If you are installing for GPU, you must ensure you have the correct NVIDIA drivers and the corresponding CUDA Toolkit (version 12.8 in this case) installed *manually* on your system. `pip` only installs the PyTorch library compiled for that CUDA version, not the CUDA Toolkit itself.
 
     This single command handles all Python package installations.
 

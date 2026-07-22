@@ -3,11 +3,11 @@ channels:
   - defaults
 dependencies:
   # Python requirement
-  - python>=3.8,<3.12
+  - python>=3.10,<3.15
 
   # Core ML Dependencies
-  - pytorch>=2.6,<3 # CPU-only build
-  - torchvision>=0.21,<0.22 # Will pick up CPU variant
+  - pytorch>=2.10,<3 # CPU-only build
+  - torchvision>=0.25,<0.26 # Will pick up CPU variant
   - pytorch-ignite>=0.5,<0.6
   
   # Other Dependencies
@@ -28,5 +28,5 @@ dependencies:
 
   - pip:
       # Install FFmpeg-enabled torchaudio from official PyTorch wheel for CPU
-      - torchaudio --index-url https://download.pytorch.org/whl/cpu
+      - torchaudio>=2.10,<3 --index-url https://download.pytorch.org/whl/cpu
       - -e .

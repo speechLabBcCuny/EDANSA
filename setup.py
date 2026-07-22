@@ -14,7 +14,7 @@ here = pathlib.Path(__file__).parent.resolve()
 # Get the long description from the README file
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 
-# Requirements are now handled by requirements_cpu.txt and requirements_gpu_cu118.txt for local/dev installs.
+# Requirements are now handled by requirements_cpu.txt and requirements_gpu_cu128.txt for local/dev installs.
 # For `pip install edansa` (e.g. from PyPI), core dependencies are listed below.
 # PyTorch and its variants should be installed by the user separately or via the specific requirements files.
 
@@ -138,9 +138,9 @@ setup(
     # https://packaging.python.org/guides/distributing-packages-using-setuptools/#python-requires
     
     # mostly constrained by torch and torchaudio
-    # torch 2.6.0 requires python 3.8-3.11
-    # https://pytorch.org/audio/2.6.0/installation.html#compatibility-matrix
-    python_requires='>=3.8, <3.12',
+    # torch 2.10.0 requires Python versions supported by the selected PyTorch wheel
+    # https://pytorch.org/audio/stable/installation.html#compatibility-matrix
+    python_requires='>=3.10, <3.15',
 
     # This field lists other packages that your project depends on to run.
     # Any package you put here will be installed by pip when your project is
